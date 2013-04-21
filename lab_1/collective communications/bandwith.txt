@@ -1,0 +1,21 @@
+3 (a)
+=====
+The time of awareness is the time until all processes are aware of the message.
+
+time of awareness = (p-1)*(n/b+a)
+
+where p = number of processes, n = length of message in bytes, b = bandwidth in bytes per second, a = processing latency
+
+3 (b)
+=====
+> broadcast
+The sender can be broadcast the message to all recipients.
+But MPI_send is blocking, so the time of awereness is still the same!
+time of awareness = (p-1)*(n/b+a)
+
+> anycast
+If there very much recipients, the sender can send it only
+to the (topologically) nearest nodes. This node will do the same.
+It's like an unicast because any node can send only one time at once!
+The time of awarness is decreased by log2.
+time of awareness = log2(p)*(n/b+a)
