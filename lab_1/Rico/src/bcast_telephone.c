@@ -1,6 +1,6 @@
 
 /*
- * authors: Tammo Johannes Herbert
+ * authors: Tammo Johannes Herbert (319391)
  *          Rico Jasper            (319396)
  *          Erik Rudisch           (343930)
  */
