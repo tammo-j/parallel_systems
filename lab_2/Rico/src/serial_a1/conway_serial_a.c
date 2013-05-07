@@ -6,11 +6,6 @@
 
 #include "map.h"
 
-bool future(map *map, int t, int x, int y);
-
-void tick(map *map, int t);
-void loop(map *map);
-
 int main(int argc, char **argv) {
 	int width = 50;
 	int height = 50;
