@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "map.h"
+#include "conway_algorithm.h"
 
 int main(int argc, char **argv) {
 	int width = 50;
