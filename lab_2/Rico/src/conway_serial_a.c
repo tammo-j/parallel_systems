@@ -12,19 +12,22 @@ int main(int argc, char **argv) {
 	int height = 50;
 	int duration = 20;
 	
-	map map;
+	map world;
 	
-	map_init(&map, duration, width, height);
+	map_init(&world, duration, width, height);
 	
 	for (int x = 14; x <= 34; ++x) {
 		for (int y = 14; y <= 34; ++y) {
-			map_set(&map, 0, x, y, true);
+			map_set(&world, 0, x, y, true);
 		}
 	}
 	
-	conway_solve(&map);
+	conway_solve(&world);
 	
-	map_free(&map);
+	for (int t = 0; t < duration; ++t)
+		map_print(&world, t, 0, 0, width-1, height-1);
+	
+	map_free(&world);
 	
 	return EXIT_SUCCESS;
 }

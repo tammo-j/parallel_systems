@@ -33,7 +33,7 @@ void map_init(map *map, int duration, int width, int height) {
 	for (int i = 0; i < duration; ++i) {
 		levels[i].head = &cells[i];
 		levels[i].tail = &cells[i];
-		levels[i].cur = &cells[i];
+		levels[i].cur  = &cells[i];
 		
 		cells[i].next = NULL;
 	}
@@ -92,6 +92,7 @@ bool map_next(map *map, int t, int *x, int *y) {
 	}
 	
 }
+
 void map_restart(map *map, int t) {
 	map_data *levels = (map_data *) map->data;
 	map_data *level = &levels[t];

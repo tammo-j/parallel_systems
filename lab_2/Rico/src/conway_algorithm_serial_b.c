@@ -7,11 +7,8 @@ static void tick(map *map, int t);
 
 void conway_solve(map *map) {
 	// for each tick
-	for (int t = 0; t < map->duration-1; ++t) {
+	for (int t = 0; t < map->duration-1; ++t)
 		tick(map, t);
-		
-		map_print(map, t, 0, 0, map->width-1, map->height-1);
-	}
 }
 
 void tick(map *map, int t) {

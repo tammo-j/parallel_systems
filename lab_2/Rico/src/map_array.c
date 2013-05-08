@@ -58,12 +58,12 @@ void map_set(map *map, int t, int x, int y, bool status) {
 bool map_get(map *map, int t, int x, int y) {
 /*	printf("get t=%d x=%d y=%d ", t, x, y); */
 	
-	if (t < 0 || t >= map->duration ||
-		x < 0 || x >= map->width    ||
-		y < 0 || y >= map->height     )
-	{
-		return false;
-	}
+/*	if (t < 0 || t >= map->duration ||*/
+/*		x < 0 || x >= map->width    ||*/
+/*		y < 0 || y >= map->height     )*/
+/*	{*/
+/*		return false;*/
+/*	}*/
 	
 	map_data *data = (map_data *) map->data;
 	block (*arr)[map->width][data->blocks] = data->cells;

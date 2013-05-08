@@ -7,11 +7,8 @@ static int count_neighbors(map *map, int t, int x, int y);
 
 void conway_solve(map *map) {
 	// for each tick
-	for (int t = 0; t < map->duration-1; ++t) {
+	for (int t = 0; t < map->duration-1; ++t)
 		tick(map, t);
-		
-		map_print(map, t, 0, 0, map->width-1, map->height-1);
-	}
 }
 
 void tick(map *map, int t) {
@@ -19,8 +16,8 @@ void tick(map *map, int t) {
 	
 	// for each cell
 	// apply rules of birth and survival
-	for (int x = 0; x < map->width; ++x) {
-		for (int y = 0; y < map->height; ++y) {
+	for (int x = 1; x < map->width-1; ++x) {
+		for (int y = 1; y < map->height-1; ++y) {
 			int  n      = count_neighbors(map, t, x, y);
 			bool now    = map_get(map, t, x, y);
 			bool future = conway_future(now, n);
