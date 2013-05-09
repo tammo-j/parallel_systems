@@ -11,18 +11,22 @@ void conway_solve(map *map) {
 		tick(map, t);
 }
 
-void tick(map *map, int t) {
-/*	printf("tick %d\n", t); */
+void tick(map *world, int t) {
+/*	printf("tick %d\n", t);*/
 
-	char neighbors[map->width][map->height];
+	char neighbors[world->width][world->height];
 	memset(neighbors, 0, sizeof(neighbors));
+	
+	// remembers live cells' neighbors
+	map touched;
+	map_init(&touched, 1, world->width, world->height);
 	
 	int x, y;
 
 	// for all live cells
 	// notify yourself as neighbors (minesweeper style)
-	map_restart(map, t);
-	while (map_next(map, t, &x, &y)) {
+	map_restart(world, t);
+	while (map_next(world, t, &x, &y)) {
 		// for all neighboring cells
 		for (int dx = -1; dx <= 1; ++dx) {
 			for (int dy = -1; dy <= 1; ++dy) {
@@ -32,38 +36,51 @@ void tick(map *map, int t) {
 				int nx = x + dx;
 				int ny = y + dy;
 				
-				if (nx < 0 || nx >= map->width ||
-					ny < 0 || ny >= map->height  )
+				// don't look beyond the world
+				if (nx < 0 || nx >= world->width ||
+					ny < 0 || ny >= world->height  )
 				{
 					continue;
 				}
+				
+				// if untouched
+				if (neighbors[nx][ny] == 0)
+					map_append(&touched, 0, nx, ny);
 			
 				++neighbors[nx][ny];
 			}
 		}
 	}
 	
-	// for all live and neighboring cells
-	// check and apply birth and survival rules
-	map_restart(map, t);
-	while (map_next(map, t, &x, &y)) {
-		for (int dx = -1; dx <= 1; ++dx) {
-			for (int dy = -1; dy <= 1; ++dy) {
-				int nx = x + dx;
-				int ny = y + dy;
-				int n = neighbors[nx][ny];
-				
-				// only the current live cell is considered live
-				// this exploits that the birth rule is
-				// a partial set of the survival rule
-				bool now = dx == 0 && dy == 0;
-				bool future = conway_future(now, n);
-				
-				if (future) {
-					map_append(map, t+1, nx, ny);
-					neighbors[nx][ny] = 0; // avoid that a cell is appended multiple times
-				}
-			}
+	// for all touched cells
+	// apply birth rule
+	while (map_next(&touched, 0, &x, &y)) {
+		// consider touched cells dead
+		// this exploits that the birth rule is
+		// a partial set of the survival rule
+		bool status = conway_future(false, neighbors[x][y]);
+		
+		if (status) {
+			map_append(world, t+1, x, y);
+			neighbors[x][y] = 0; // avoid that a cell is appended multiple times
 		}
+	}
+	
+	map_free(&touched);
+	
+	// for all live cells
+	// apply survival rule
+	map_restart(world, t);
+	while (map_next(world, t, &x, &y)) {
+		int n = neighbors[x][y];
+		
+		// if already revived by birth rule
+		if (n == 0)
+			continue;
+		
+		bool status = conway_future(true, n);
+		
+		if (status)
+			map_append(world, t+1, x, y);
 	}
 }
