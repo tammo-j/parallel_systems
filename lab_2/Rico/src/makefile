@@ -18,3 +18,8 @@ partial_a:
 		conway_partial_a.c conway_algorithm_common.c \
 		conway_algorithm_partial_a.c map_common.c map_array.c
 
+partial_b:
+	$(CC) $(CFLAGS) -o $(BIN_DIR)/conway_partial_b \
+		conway_partial_b.c conway_algorithm_common.c \
+		conway_algorithm_partial_b.c map_list.c
+
