@@ -2,8 +2,11 @@
 
 #include <string.h>
 
+#include "map_list.h"
+
 
 static void tick(map *map, int t);
+static void touch(cell_list *touched, int width, int height, char neighbors[width][height], int x, int y);
 
 void conway_solve(map *map) {
 	// for each tick
@@ -90,3 +93,11 @@ void tick(map *world, int t) {
 			map_append(world, t+1, x, y);
 	}
 }
+
+static void touch(cell_list *touched, int width, int height, char neighbors[width][height], int x, int y) {
+	int n = ++neighbors[x][y];
+	
+	if (n == 1)
+		cell_list_append(touched, x, y);
+}
+
