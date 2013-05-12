@@ -1,26 +1,33 @@
-// map sizes
-#define HEIGHT 10
-#define WIDTH  30
+#ifndef __MAP_H
+#define __MAP_H
+
 // the chanche that a initialized cell is alived is 1:density
 #define DENSITY 4
 
-typedef struct
+#include <time.h>
+#include <stdbool.h>
+
+typedef struct cell
 {
-	int x;
 	int y;
+	int x;
+	struct cell* next;
 } cell_t;
 
 typedef struct map
 {
-	cell_t cell;
-	struct map* next;
+	cell_t* head;
+	cell_t* tail;
+	cell_t* curr;
+	
+	int height;
+	int width;
 } map_t;
 
-typedef struct map_list
-{
-	struct map_list* head;
-	struct map_list* tail;
-	struct map_list* curr;
-} map_list_t;
+void map_init(map_t* map, int height, int width);
+void map_add(map_t* map, int y, int x);
+void map_fill_random(map_t* map);
+cell_t* map_get_next(map_t* map);
+void map_print(map_t* map);
 
-int append(map_t map, int x, int y);
+#endif

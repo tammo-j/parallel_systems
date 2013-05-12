@@ -1,155 +1,128 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdbool.h>
-#include <time.h>
-#include <mpi.h>
+#include <unistd.h>
+//#include <mpi.h>
 
-void print_map(map_t* map);
+#include "map.h"
+
+void calc_next_tick(map_t* map);
 
 int main(int argc, char** argv)
 {
 	/* init map */
-	
+
 	map_t* map = calloc(1, sizeof(map_t));
-	cell_t cell = {0, 0};
-	map->cell = cell;
-	map->next = NULL;
-	
-	map_t* last = map;
+	map_init(map,16, 16);
+	map_fill_random(map);
 
-	srand(time(NULL));
-	for(int x = 1; x < WIDTH; x++)
+	
+	/* distribute map */
+
+
+	map_t* map_1 = calloc(1, sizeof(map_t));
+	map_t* map_2 = calloc(1, sizeof(map_t));
+	map_t* map_3 = calloc(1, sizeof(map_t));
+	map_t* map_4 = calloc(1, sizeof(map_t));
+	map_init(map_1, 4, 4);
+	map_init(map_2, 4, 4);
+	map_init(map_3, 4, 4);
+	map_init(map_4, 4, 4);
+	for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
 	{
-		for(int y = 0; y < HEIGHT; y++)
+		int segment = 1;
+		if(cell_i->y > 8)
+			segment = 3;
+		if(cell_i->y < 8)
+			segment += 1;
+
+		switch(segment)
 		{
-			if(0 < (rand() % DENSITY))
-				continue;
-			
-			map_t* map_i = calloc(1, sizeof(map_t));
-			cell_t cell = {x, y};
-			map_i->cell = cell;
-			map_i->next = NULL;
-			
-			last->next = map_i;
-			last = map_i;
+			case 1:
+				map_add(map_1, cell_i->y, cell_i->x);
+				break;
+			case 2:
+				map_add(map_2, cell_i->y, cell_i->x);
+				break;
+			case 3:
+				map_add(map_3, cell_i->y, cell_i->x);
+				break;
+			case 4:
+				map_add(map_4, cell_i->y, cell_i->x);
+				break;
+			default:
+				printf("Error by partitioning!");
+				break;
 		}
 	}
-
-	print_map(map);
-
-	/* calculate next tick */
-
-	int  map_count[WIDTH+2][HEIGHT+2]; // added a border
-	memset(map_count, 0, sizeof(map_count));
 	
-	map_t* map_i = NULL;
-	
-	// count neighboring cells
-	map_i = map;
-	while(map_i)
+	while(true)
 	{
-		int x = map_i->cell.x;
-		int y = map_i->cell.y;
-
-		map_count[x+1][y] += 1;
-		map_count[x-1][y] += 1;
-		map_count[x][y+1] += 1;
-		map_count[x][y-1] += 1;
-		map_count[x+1][y+1] += 1;
-		map_count[x+1][y-1] += 1;
-		map_count[x-1][y+1] += 1;
-		map_count[x-1][y-1] += 1;
-
-		map_i = map_i->next;
+		map_print(map);
+		calc_next_tick(map);
+		sleep(1);
 	}
-	
-	// Adjust the rules of conway's game-of-life.
-	
-	map_t* map_new = calloc(1, sizeof(map_t));
-	map_t* map_new_last = map_new;
-
-	// foreach cell in current map
-	map_t* map_cur = map;
-	while(map_cur)
-	{
-		for(int dx = -1; dx < 2; dx++)
-		{
-			for(int dy = -1; dy < 2; dy++)
-			{
-				int x = map_cur->cell.x;
-				int y = map_cur->cell.y;
-
-				int neighbors = map_count[x+dx][y+dy];
-				
-				// Is this cell considered already?
-				if(neighbors < 0)
-					continue;
-
-				map_count[x+dx][y+dy] = -1;
-				
-				// Is this cell newborned or alived?
-				if(neighbors == 3 || (dx == 0 && dy == 0 && neighbors == 2))
-				{
-					map_t* map_new_i = calloc(1, sizeof(map_t));
-					cell_t cell = {x, y};
-					map_new_i->cell = cell;
-					map_new_i->next = NULL;
-
-					map_new_last->next = map_new_i;
-
-					//printf("New alived in (%i, %i).\n", x+dx, y+dy);
-				}
-			}
-		}
-		map_cur = map_cur->next;
-	}
-
-	// The first element was a dummy.
-	map_new = map_new->next;
-
-	print_map(map_new);
 
 	return EXIT_SUCCESS;
 }
 
-void print_map(map_t* map)
+/* Adjust the rules of conway's game-of-life. */
+void calc_next_tick(map_t* map)
 {
-	/*
-	for(int x = 0; x < 10; x++)
-		printf("%i", x);
-	for(int x = 10; x < WIDTH; x++)
-		printf("%i", x/10);
-	printf("\n");
-	for(int x = 0; x < 10; x++)
-		printf(" ");
-	for(int x = 10; x < WIDTH; x++)
-		printf("%i", x%10);
-	printf("\n");
-	for(int x = 0; x < WIDTH; x++)
-		printf("-");
-	printf("\n");
-	*/
+	int  map_count[map->height+2][map->width+2]; // added a border
+	memset(map_count, 0, sizeof(map_count));
 	
-	bool cli_arr[WIDTH][HEIGHT]; 
-	memset(cli_arr, false, sizeof(cli_arr));
-
-	map_t* map_i = map;
-	while(map_i)
+	// Count the neighboring cells.
+	for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
 	{
-		cli_arr[map_i->cell.x][map_i->cell.y] = true;
-		map_i = map_i->next;
+		int y = cell_i->y+1;
+		int x = cell_i->x+1;
+
+		map_count[y][x+1] += 1;
+		map_count[y][x-1] += 1;
+		map_count[y+1][x] += 1;
+		map_count[y+1][x+1] += 1;
+		map_count[y+1][x-1] += 1;
+		map_count[y-1][x] += 1;
+		map_count[y-1][x+1] += 1;
+		map_count[y-1][x-1] += 1;
 	}
-
-	for(int y = 0; y < HEIGHT; y++)
+	// Don't consider the extra border around!
+	memset(map_count[0], 0, sizeof(map_count[0]));
+	for(int y = 1; y < map->height+2; y++)
 	{
-		for(int x = 0; x < WIDTH; x++)
+		map_count[y][0] =  0;
+		map_count[y][map->width+1] =  0;
+	}
+	memset(map_count[map->height+1], 0, sizeof(map_count[map->height+1]));
+		
+	map_t* map_new = calloc(1, sizeof(map_t));
+	map_init(map_new, map->height, map->width);
+
+	for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
+	{
+		int y = cell_i->y+1;
+		int x = cell_i->x+1;
+
+		for(int dy = -1; dy < 2; dy++)
 		{
-			if(cli_arr[x][y] == true)
-				printf("X");
-			else
-				printf(" ");
+			for(int dx = -1; dx < 2; dx++)
+			{
+				int neighbors = map_count[y+dy][x+dx];
+				
+				// Is this cell considered already?
+				if(neighbors < 0)
+					continue;
+				
+				// Is this cell newborned or alived?
+				if((dy == 0 && dx == 0 && neighbors == 2) || (neighbors == 3))
+				{
+					map_add(map_new, y+dy-1, x+dx-1);
+					map_count[y+dy][x+dx] = -1;
+				}
+			}
 		}
-		printf("\n");
 	}
+	// TODO: free map first?
+	*map = *map_new;
 }
