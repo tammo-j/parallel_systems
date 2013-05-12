@@ -3,6 +3,9 @@
 
 #include "map.h"
 
+// TODO for testing
+void tick(map *map, int t);
+
 // interface
 void conway_solve(map *map);
 

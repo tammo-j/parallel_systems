@@ -21,5 +21,6 @@ partial_a:
 partial_b:
 	$(CC) $(CFLAGS) -o $(BIN_DIR)/conway_partial_b \
 		conway_partial_b.c conway_algorithm_common.c \
-		conway_algorithm_partial_b.c map_list.c cell_list.c intermap.c
+		conway_algorithm_partial_b.c map_list.c cell_list.c \
+		intermap.c conway_neighbor_communication.c
 

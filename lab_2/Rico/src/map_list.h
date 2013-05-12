@@ -7,10 +7,13 @@
 #include "intermap.h"
 
 
-void map_fill_intermap(map *map);
-intermap *map_get_intermap(map *map);
-void map_list_finalize_border(map *map, int t);
-void map_list_finalize_core(map *map, int t);
+void map_list_fill_intermap(map *map);
+intermap *map_list_get_intermap(map *map);
+void map_list_commit(map *map, int t);
+void map_list_empty_touched_oborder(map *map);
+void map_list_empty_touched_iborder(map *map);
+void map_list_empty_touched_core(map *map);
+void map_list_reset_neighbors(map *map);
 void map_list_reset_neighbors(map *map);
 
 

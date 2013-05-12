@@ -5,11 +5,12 @@
 #include <string.h>
 
 #include "map.h"
+#include "map_list.h"
 #include "conway_algorithm.h"
 
 int main(int argc, char **argv) {
-	int width = 50;
-	int height = 50;
+	int width = 52;
+	int height = 52;
 	int duration = 20;
 	
 	map world;
@@ -27,21 +28,34 @@ int main(int argc, char **argv) {
 	// distribute
 	for (int i = 0; i < 5; ++i) {
 		for (int j = 0; j < 5; ++j) {
-			map_init(&partial_world[i][j], duration, 10, 10);
+			map_init(&partial_world[i][j], duration, 12, 12);
 		}
 	}
 			
 	int x, y;
 	map_restart(&world, 0);
 	while (map_next(&world, 0, &x, &y))
-		map_append(&partial_world[x/10][y/10], 0, x%10, y%10);
+		map_append(&partial_world[(x-1)/10][(y-1)/10], 0, (x-1)%10+1, (y-1)%10+1);
+	
+	
 	
 	// calculate
+	for (int i = 0; i < 5; ++i) {
+		for (int j = 0; j < 5; ++j) {
+			map_list_fill_intermap(&partial_world[i][j]);
+		}
+	}
 	for (int t = 0; t < duration; ++t) {
 		for (int i = 0; i < 5; ++i) {
 			for (int j = 0; j < 5; ++j) {
-				conway_solve(&partial_world[i][j]);
+				//conway_solve(&partial_world[i][j]);
+				tick(&partial_world[i][j], t);
 			}
+		}
+	}
+	for (int i = 0; i < 5; ++i) {
+		for (int j = 0; j < 5; ++j) {
+			map_list_commit(&partial_world[i][j], duration-1);
 		}
 	}
 	
@@ -61,6 +75,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	
+	// print
 	for (int t = 0; t < duration; ++t)
 		map_print(&world, t, 0, 0, width-1, height-1);
 		
