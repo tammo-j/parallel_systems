@@ -112,6 +112,7 @@ cell_t* map_get_next(map_t* map)
 
 void map_print(map_t* map)
 {
+	/*
 	for(int x = 0; x < 10; x++)
 		printf("%i", x);
 	for(int x = 10; x < map->width; x++)
@@ -122,6 +123,7 @@ void map_print(map_t* map)
 	for(int x = 10; x < map->width; x++)
 		printf("%i", x%10);
 	printf("\n");
+	*/
 	for(int x = 0; x < map->width; x++)
 		printf("-");
 	printf("\n");

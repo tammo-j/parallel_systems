@@ -14,21 +14,70 @@ int main(int argc, char** argv)
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	
-	map_t* map;
 
-	// init map
-	map = calloc(1, sizeof(map_t));
-	map_init(map, 16/size, 16);
-	map_fill_random(map);
-	
-	// distribute map
-	while(true)
+	if(size < 2)
 	{
-		printf("RANK: %i\n", rank);
-		map_print(map);
-		calc_next_tick(map, rank, size);
-		sleep(1);
+		
+		map_t* map = calloc(1, sizeof(map_t));
+		map_init(map, 16, 16);
+		map_fill_pulsar(map);
+		while(true)
+		{
+			map_print(map);
+			calc_next_tick(map, rank, size);
+			sleep(1);
+			
+		}
+	} else
+	{
+		if(rank == 0)
+		{
+			int dot[2];
+			int count;
+			map_t* map = calloc(1, sizeof(map_t));
+			map_init(map, 16, 16);
+
+			while(true)
+			{
+				count = 0;
+				while(count < size-1)
+				{
+					MPI_Recv(dot, 2, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+					if(dot[0] != -1 || dot[1] != -1)
+						map_add(map, dot[0], dot[1]);
+					else
+						count++;
+				}
+				printf("ALL:\n");
+				map_print(map);
+			}
+		} else
+		{
+			size--;
+			rank--;
+			printf("Init rank:%i by size:%i\n", rank, size);
+
+			map_t* map = calloc(1, sizeof(map_t));
+			map_init(map, 16/(size), 16);
+			map_fill_random(map);
+			while(true)
+			{
+				for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
+				{
+					int dot[2] = {cell_i->x, cell_i->y};
+					MPI_Send(dot, 2, MPI_INT, 0, 0, MPI_COMM_WORLD);
+				}
+				int dot[2] = {-1, -1};
+				MPI_Send(dot, 2, MPI_INT, 0, 0, MPI_COMM_WORLD);
+				
+				printf("RANK: %i\n", rank);
+				map_print(map);
+				
+				calc_next_tick(map, rank, size);
+				sleep(1);
+				
+			}
+		}
 	}
 
 	MPI_Finalize();
