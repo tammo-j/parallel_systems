@@ -49,18 +49,18 @@ int main(int argc, char **argv) {
 			map_list_fill_intermap(&partial_world[i][j]);
 		}
 	}
-	for (int t = 0; t < duration; ++t) {
+	for (int t = 0; t < duration-1; ++t) {
 		for (int i = 0; i < 5; ++i) {
 			for (int j = 0; j < 5; ++j) {
 				comm_set_current_node(i, j);
+				printf("now %d:%d:%d\n", t, i, j);
 				conway_solve_border(&partial_world[i][j], t);
 			}
 		}
-	}
-	for (int t = 0; t < duration; ++t) {
 		for (int i = 0; i < 5; ++i) {
 			for (int j = 0; j < 5; ++j) {
 				comm_set_current_node(i, j);
+				printf("now %d:%d:%d\n", t, i, j);
 				conway_solve_core(&partial_world[i][j], t);
 			}
 		}
@@ -71,8 +71,11 @@ int main(int argc, char **argv) {
 		}
 	}
 	
+	map merge_world;
+	map_init(&merge_world, duration, width, height);
+	
 	// merge
-	for (int t = 1; t < duration; ++t) {
+	for (int t = 0; t < duration; ++t) {
 		for (int i = 0; i < 5; ++i) {
 			for (int j = 0; j < 5; ++j) {
 				map *cur = &partial_world[i][j];
@@ -82,14 +85,16 @@ int main(int argc, char **argv) {
 				
 				map_restart(cur, t);
 				while (map_next(cur, t, &x, &y))
-					map_append(&world, t, x0+x, y0+y);
+					map_append(&merge_world, t, x0+x, y0+y);
 			}
 		}
 	}
 	
 	// print
 	for (int t = 0; t < duration; ++t)
-		map_print(&world, t, 0, 0, width-1, height-1);
+		map_print(&merge_world, t, 0, 0, width-1, height-1);
+	
+	map_free(&merge_world);
 		
 	map_free(&world);
 	

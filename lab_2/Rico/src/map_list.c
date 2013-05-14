@@ -99,8 +99,8 @@ void map_restart(map *map, int t) {
 }
 
 void map_print(map *map, int t, int x0, int y0, int x1, int y1) {
-	int width  = x1 - x0;
-	int height = y1 - y0;
+	int width  = x1 - x0 + 1;
+	int height = y1 - y0 + 1;
 	
 	bool arr[width][height];
 	memset(arr, 0, width*height);
@@ -120,8 +120,8 @@ void map_print(map *map, int t, int x0, int y0, int x1, int y1) {
 	// print cells
 	printf("t=%d x=%d-%d y=%d-%d:\n", t, x0, x1, y0, y1);
 
-	for (int x = 0; x < width; ++x) {
-		for (int y = 0; y < height; ++y) {
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
 			if (arr[x][y])
 				printf("X");
 			else

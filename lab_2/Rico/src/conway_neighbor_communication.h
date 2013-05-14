@@ -16,6 +16,10 @@ struct conway_msg_t {
 	neighbor_info *neighbors;
 };
 
+
+void comm_init(int duration, int xsize, int ysize);
+void comm_free();
+
 void comm_set_dimensions(int xsize, int ysize);
 void comm_set_current_node(int x, int y);
 

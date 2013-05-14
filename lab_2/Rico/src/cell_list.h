@@ -16,6 +16,7 @@ typedef struct {
 void cell_list_init(cell_list *l);
 void cell_list_free(cell_list *l);
 void cell_list_empty(cell_list *l);
+bool cell_list_isempty(cell_list *l);
 
 void cell_list_append(cell_list *l, int x, int y);
 void cell_list_merge(cell_list *l1, cell_list *l2);

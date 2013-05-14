@@ -6,6 +6,24 @@
 #include "conway_neighbor_communication.h"
 
 
+// TODO remove
+#include <stdio.h>
+
+static void print_neighbors(map *map) {
+	intermap *inter = map_list_get_intermap(map);
+	int width = map->width;
+	int height = map->height;
+	char (*neighbors)[height] = (char (*)[height]) inter->neighbors;
+	
+	for (int j = 0; j < height; ++j) {
+		for (int i = 0; i < width; ++i) {
+			printf("%d", neighbors[i][j]);
+		}
+		printf("\n");
+	}
+}
+
+
 // static void tick(map *map, int t);
 
 static void touch(map *map, int x, int y);
@@ -42,8 +60,20 @@ void conway_solve_border(map *map, int t) {
 	send_oborder_neighbors(map, t);
 	map_list_empty_touched_oborder(map);
 	
-	// touch from core and calculate it
+/*	// touch from core and calculate it*/
+/*	printf("before touched by core\n");*/
+/*	print_neighbors(map);*/
+	
 	touch_from_core(map);
+	
+/*	printf("after touched by core\n");*/
+/*	print_neighbors(map);*/
+	
+	if (t == 3) {
+		printf("touched by iborder and core\n");
+		print_neighbors(map);
+	}
+	
 	calculate_core(map);
 	map_list_empty_touched_core(map);
 }
@@ -51,6 +81,12 @@ void conway_solve_border(map *map, int t) {
 void conway_solve_core(map *map, int t) {
 	// recv touched inner border and calculate it
 	recv_iborder_neighbors(map, t);
+	
+	if (t == 3) {
+		printf("touched by recv\n");
+		print_neighbors(map);
+	}
+	
 	calculate_iborder(map);
 	map_list_empty_touched_iborder(map);
 	
@@ -99,7 +135,6 @@ void touch_neighbors(map *map, int x, int y) {
 	}
 }
 
-
 void apply_birth_rule(int width, int height, char neighbors[width][height], cell_list *touched, cell_list *future) {
 	int x, y;
 	
@@ -126,13 +161,7 @@ void apply_survival_rule(int width, int height, char neighbors[width][height], c
 	// apply survival rule
 	cell_list_restart(live);
 	while (cell_list_next(live, &x, &y)) {
-		int n = neighbors[x][y];
-		
-		// if already revived by birth rule
-		if (n == 0)
-			continue;
-		
-		bool status = conway_future(true, n);
+		bool status = conway_future(true, neighbors[x][y]);
 		
 		if (status)
 			cell_list_append(future, x, y);
@@ -160,13 +189,8 @@ void touch_from_core(map *map) {
 }
 
 void calculate(int width, int height, char neighbors[width][height], cell_list *now, cell_list *touched, cell_list *future) {
-	int x, y;
-	
-	cell_list_restart(touched);
-	while (cell_list_next(touched, &x, &y)) {
-		apply_survival_rule(width, height, neighbors, now, future);
-		apply_birth_rule(width, height, neighbors, touched, future);
-	}
+	apply_birth_rule(width, height, neighbors, touched, future);
+	apply_survival_rule(width, height, neighbors, now, future);
 }
 
 void calculate_core(map *map) {
@@ -303,14 +327,14 @@ void recv_iborder_neighbors(map *map, int t) {
 			
 			// translate coordinates
 			switch (src) {
-				case COMM_TOP:          tx = x;            ty = 0;             break;
-				case COMM_BOTTOM:       tx = x;            ty = map->height-1; break;
-				case COMM_LEFT:         tx = 0;            ty = y;             break;
-				case COMM_RIGHT:        tx = map->width-1; ty = y;             break;
-				case COMM_TOP_LEFT:     tx = 0;            ty = 0;             break;
-				case COMM_TOP_RIGHT:    tx = map->width-1; ty = 0;             break;
-				case COMM_BOTTOM_LEFT:  tx = 0;            ty = map->height-1; break;
-				case COMM_BOTTOM_RIGHT: tx = map->width-1; ty = map->height-1; break;
+				case COMM_TOP:          tx = x;            ty = 1;             break;
+				case COMM_BOTTOM:       tx = x;            ty = map->height-2; break;
+				case COMM_LEFT:         tx = 1;            ty = y;             break;
+				case COMM_RIGHT:        tx = map->width-2; ty = y;             break;
+				case COMM_TOP_LEFT:     tx = 1;            ty = 1;             break;
+				case COMM_TOP_RIGHT:    tx = map->width-2; ty = 1;             break;
+				case COMM_BOTTOM_LEFT:  tx = 1;            ty = map->height-2; break;
+				case COMM_BOTTOM_RIGHT: tx = map->width-2; ty = map->height-2; break;
 			}
 			
 			int n = infos[j].neighbors;

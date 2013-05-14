@@ -23,6 +23,40 @@ static int g_x = -1;
 static int g_y = -1;
 static msg_stack *g_msg_queues = NULL;
 
+void comm_init(int duration, int xsize, int ysize) {
+	g_duration = duration;
+	g_xsize = xsize;
+	g_ysize = ysize;
+	g_nqueues = duration*xsize*ysize;
+	
+	g_msg_queues = calloc(g_nqueues, sizeof(*g_msg_queues));
+	
+	for (int i = 0; i < g_nqueues; ++i) {
+		g_msg_queues[i].msg = NULL;
+		g_msg_queues[i].next = NULL;
+	}
+}
+
+void comm_free() {
+	msg_stack *cur, *next;
+	
+	for (int i = 0; i < g_nqueues; ++i) {
+		cur = g_msg_queues[i].next;
+		
+		while (cur) {
+			next = cur->next;
+			free(cur);
+		}
+	}
+	
+	free(g_msg_queues);
+}
+
+void comm_set_current_node(int x, int y) {
+	g_x = x;
+	g_y = y;
+}
+
 void conway_send(int dst, int t, conway_msg *msg) {
 	int id = comm_dir2id(dst);
 	
@@ -78,40 +112,6 @@ void conway_recv(int *src, int t, conway_msg *msg) {
 	free(top->msg->neighbors);
 	free(top->msg);
 	free(top);
-}
-
-void comm_init(int duration, int xsize, int ysize) {
-	g_duration = duration;
-	g_xsize = xsize;
-	g_ysize = ysize;
-	g_nqueues = duration*xsize*ysize;
-	
-	g_msg_queues = calloc(g_nqueues, sizeof(*g_msg_queues));
-	
-	for (int i = 0; i < g_nqueues; ++i) {
-		g_msg_queues[i].msg = NULL;
-		g_msg_queues[i].next = NULL;
-	}
-}
-
-void comm_free() {
-	msg_stack *cur, *next;
-	
-	for (int i = 0; i < g_nqueues; ++i) {
-		cur = g_msg_queues[i].next;
-		
-		while (cur) {
-			next = cur->next;
-			free(cur);
-		}
-	}
-	
-	free(g_msg_queues);
-}
-
-void comm_set_current_node(int x, int y) {
-	g_x = x;
-	g_y = y;
 }
 
 int comm_dst2src(int dst) {

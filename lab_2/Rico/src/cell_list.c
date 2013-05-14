@@ -47,6 +47,10 @@ void cell_list_empty(cell_list *l) {
 	cell_list_restart(l);
 }
 
+bool cell_list_isempty(cell_list *l) {
+	return l->head == l->tail;
+}
+
 void cell_list_append(cell_list *l, int x, int y) {
 	// create new cell
 	cell_list_node *cell = malloc(sizeof(cell));
@@ -60,8 +64,12 @@ void cell_list_append(cell_list *l, int x, int y) {
 }
 
 void cell_list_merge(cell_list *l1, cell_list *l2) {
+	if (cell_list_isempty(l2))
+		return;
+		
 	// append second list on first one
 	l1->tail->next = l2->head->next;
+	l1->tail = l2->tail;
 	
 	// empty second list
 	l2->head->next = NULL;
