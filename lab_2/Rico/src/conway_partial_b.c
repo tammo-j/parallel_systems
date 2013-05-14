@@ -7,11 +7,14 @@
 #include "map.h"
 #include "map_list.h"
 #include "conway_algorithm.h"
+#include "conway_neighbor_communication.h"
 
 int main(int argc, char **argv) {
 	int width = 52;
 	int height = 52;
 	int duration = 20;
+	
+	comm_init(duration, 5, 5);
 	
 	map world;
 	
@@ -22,6 +25,7 @@ int main(int argc, char **argv) {
 			map_append(&world, 0, x, y);
 		}
 	}
+	
 	
 	map partial_world[5][5];
 	
@@ -48,8 +52,16 @@ int main(int argc, char **argv) {
 	for (int t = 0; t < duration; ++t) {
 		for (int i = 0; i < 5; ++i) {
 			for (int j = 0; j < 5; ++j) {
-				//conway_solve(&partial_world[i][j]);
-				tick(&partial_world[i][j], t);
+				comm_set_current_node(i, j);
+				conway_solve_border(&partial_world[i][j], t);
+			}
+		}
+	}
+	for (int t = 0; t < duration; ++t) {
+		for (int i = 0; i < 5; ++i) {
+			for (int j = 0; j < 5; ++j) {
+				comm_set_current_node(i, j);
+				conway_solve_core(&partial_world[i][j], t);
 			}
 		}
 	}

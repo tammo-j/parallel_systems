@@ -26,6 +26,10 @@ static msg_stack *g_msg_queues = NULL;
 void conway_send(int dst, int t, conway_msg *msg) {
 	int id = comm_dir2id(dst);
 	
+	// no neighbor
+	if (id == -1)
+		return;
+	
 	msg_stack *stack = &g_msg_queues[id*g_duration + t];
 	
 	// allocations
@@ -51,6 +55,14 @@ void conway_recv(int *src, int t, conway_msg *msg) {
 	
 	msg_stack *stack = &g_msg_queues[stack_id];
 	msg_stack *top = stack->next;
+	
+	// TODO very very dirty
+	// no neighbor
+	if (!top) {
+		*src = 0; // some source (doesn't matter since empty)
+		msg->size = 0;
+		return;
+	}
 	
 	*src = top->src;
 	

@@ -34,13 +34,8 @@ void conway_solve(map *map) {
 }
 
 void conway_solve_border(map *map, int t) {
-}
-
-void conway_solve_core(map *map, int t) {
-}
-
-void tick(map *map, int t) {
 	intermap *inter = map_list_get_intermap(map);
+	map_list_reset_neighbors(map);
 	
 	// touch from inner border and send
 	touch_from_iborder(map);
@@ -51,15 +46,21 @@ void tick(map *map, int t) {
 	touch_from_core(map);
 	calculate_core(map);
 	map_list_empty_touched_core(map);
-	
+}
+
+void conway_solve_core(map *map, int t) {
 	// recv touched inner border and calculate it
 	recv_iborder_neighbors(map, t);
 	calculate_iborder(map);
 	map_list_empty_touched_iborder(map);
-	map_list_reset_neighbors(map);
 	
 	// commit changes
 	map_list_commit(map, t);
+}
+
+void tick(map *map, int t) {
+	conway_solve_border(map, t);
+	conway_solve_core(map, t);
 }
 
 void touch(map *map, int x, int y) {
@@ -212,32 +213,32 @@ void send_oborder_neighbors(map *map, int t) {
 	
 	// initialize infos
 	for (int i = 0; i < 8; ++i) {
-		msg[i].size = 0;
+		msgs[i].size = 0;
 		
 		switch (i) {
 		case COMM_TOP:
-			msg[i].neighbors = top;
+			msgs[i].neighbors = top;
 			break;
 		case COMM_BOTTOM:
-			msg[i].neighbors = bottom;
+			msgs[i].neighbors = bottom;
 			break;
 		case COMM_LEFT:
-			msg[i].neighbors = left;
+			msgs[i].neighbors = left;
 			break;
 		case COMM_RIGHT:
-			msg[i].neighbors = right;
+			msgs[i].neighbors = right;
 			break;
 		case COMM_TOP_LEFT:
-			msg[i].neighbors = &top_left;
+			msgs[i].neighbors = &top_left;
 			break;
 		case COMM_TOP_RIGHT:
-			msg[i].neighbors = &top_right;
+			msgs[i].neighbors = &top_right;
 			break;
 		case COMM_BOTTOM_LEFT:
-			msg[i].neighbors = &bottom_left;
+			msgs[i].neighbors = &bottom_left;
 			break;
 		case COMM_BOTTOM_RIGHT:
-			msg[i].neighbors = &bottom_right;
+			msgs[i].neighbors = &bottom_right;
 			break;
 		}
 	}
@@ -274,7 +275,7 @@ void send_oborder_neighbors(map *map, int t) {
 	}
 	
 	for (int i = 0; i < 8; ++i)
-		conway_send(i, t, &msg[i]);
+		conway_send(i, t, &msgs[i]);
 }
 
 // TODO also pretty bad
@@ -314,10 +315,10 @@ void recv_iborder_neighbors(map *map, int t) {
 			
 			int n = infos[j].neighbors;
 			
-			if (neighbors[x][y] == 0)
+			if (neighbors[tx][ty] == 0)
 				cell_list_append(touched, tx, ty);
 			
-			neighbors[x][y] += n;
+			neighbors[tx][ty] += n;
 		}
 	}
 }

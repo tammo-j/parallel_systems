@@ -13,7 +13,7 @@ void intermap_init(intermap *inter, int size) {
 	cell_list_init(&inter->future_iborder);
 	cell_list_init(&inter->future_core);
 	
-	inter->neighbors = calloc(size, sizeof(&inter->neighbors));
+	inter->neighbors = calloc(size, sizeof(*inter->neighbors));
 }
 
 void intermap_free(intermap *inter) {
