@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <mpi.h>
+#include <math.h>
 #include "map.h"
 
 void calc_next_tick(map_t* map, int rank, int size);
@@ -30,17 +31,28 @@ int main(int argc, char** argv)
 		}
 	} else
 	{
-		// TODO:
-		//map_width = 8*(size-1);
-		//map_heigh = 16;
+		int map_width = (int) ceil((float)16/(float)(size-1));
 
 		if(rank == 0)
 		{
-			int dot[2];
-			int count;
+			// Initialize the globale map.
 			map_t* map = calloc(1, sizeof(map_t));
-			map_init(map, 16, 16);
+			map_init(map, map_width*(size-1), 16);
+			map_fill_pulsar(map);
 
+			// Distribute the globale map to working processes.
+			for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
+			{
+				int dot[2] = {cell_i->x, cell_i->y};
+				int segment = ((cell_i->x)/map_width)+1;
+				MPI_Send(dot, 2, MPI_INT, segment, 0, MPI_COMM_WORLD);
+			}
+			int dot[2] = {-1, -1};
+			for(int i = 1; i < size; i++)
+				MPI_Send(dot, 2, MPI_INT, i, 0, MPI_COMM_WORLD);
+			
+			// Reveive the composed map and print it.
+			int count;
 			while(true)
 			{
 				count = 0;
@@ -52,18 +64,29 @@ int main(int argc, char** argv)
 					else
 						map_add(map, dot[0], dot[1]);
 				}
-				map_print(map);
 
+				map_print(map);
+				
 				map_free(map);
 			}
 		} else
 		{
 			map_t* map = calloc(1, sizeof(map_t));
-			map_init(map, 16/(size-1), 16);
-			map_fill_random(map);
+			map_init(map, map_width, 16);
+
+			// Receive the disributed map from root.
+			int dot[2] = {0, 0};
+			while(dot[0] != -1 && dot[1] != -1)
+			{
+				MPI_Recv(dot, 2, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+				if(dot[0] != -1 && dot[1] != -1)
+					map_add(map, dot[0]%map_width, dot[1]);
+			}
+			
+			// Calculate the map and send it to root.
 			while(true)
 			{
-				int offset = (rank-1)*(16/(size-1));
+				int offset = (rank-1)*map_width;
 				for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
 				{
 					int dot[2] = {offset+cell_i->x, cell_i->y};
@@ -104,15 +127,11 @@ void sendBorders(map_t* map, int rank, int size)
 
 	// Send to left neighbor.
 	if(rank > 1)
-	{
 		MPI_Send(map_border_left,  map->height, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-	}
 
 	// Send to right neighbor.
 	if(rank < size-1)
-	{
 		MPI_Send(map_border_right, map->height, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
-	}
 }
 
 // Receive borders from neighbors.
@@ -147,12 +166,6 @@ void recvBorders(map_t* map, int rank, int size)
 // Apply the rules of conway's game-of-life.
 void calc_next_tick(map_t* map, int rank, int size)
 {
-	//if(rank == 1)
-	//{
-	//	printf("rank:%i BEFORE\n", rank);
-	//	map_print(map);
-	//}
-
 	if(rank % 2 == 0)
 	{
 		sendBorders(map, rank, size);
@@ -163,14 +176,8 @@ void calc_next_tick(map_t* map, int rank, int size)
 		sendBorders(map, rank, size);
 	}
 
-	//if(rank == 1)
-	//{
-	//	printf("rank:%i AFTER\n", rank);
-	//	map_print2(map, 1);
-	//}
-
-	// Count the neighboring cells.
-	int  map_count[map->width+4][map->height+2]; // added an extra border around
+	// Count the neighboring cells. Added an extra border around.
+	int  map_count[map->width+4][map->height+2];
 	memset(map_count, 0, sizeof(map_count));
 
 	for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))

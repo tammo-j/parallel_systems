@@ -31,6 +31,5 @@ void map_fill_random(map_t* map);
 void map_fill_pulsar(map_t* map);
 cell_t* map_get_next(map_t* map);
 void map_print(map_t* map);
-void map_print2(map_t* map, int xoffset);
 
 #endif
