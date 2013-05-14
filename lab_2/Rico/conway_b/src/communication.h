@@ -5,20 +5,6 @@
 #include "cell_list.h"
 
 
-struct conway_msg_t;
-typedef struct conway_msg_t conway_msg;
-
-typedef struct {
-	int x;
-	int y;
-	int neighbors;
-} neighbor_info;
-
-struct conway_msg_t {
-	int size;
-	neighbor_info *neighbors;
-};
-
 #define COMM_TOP 0
 #define COMM_BOTTOM 1
 #define COMM_LEFT 2
@@ -27,6 +13,18 @@ struct conway_msg_t {
 #define COMM_TOP_RIGHT 5
 #define COMM_BOTTOM_LEFT 6
 #define COMM_BOTTOM_RIGHT 7
+
+
+typedef struct {
+	int x;
+	int y;
+	int neighbors;
+} neighbor_info;
+
+typedef struct {
+	int size;
+	neighbor_info *neighbors;
+} conway_msg;
 
 
 void comm_init(int duration, int xsize, int ysize);
