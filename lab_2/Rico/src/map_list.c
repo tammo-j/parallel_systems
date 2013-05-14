@@ -1,4 +1,4 @@
-#include "map.h"
+#include "map_list.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -6,112 +6,109 @@
 // TODO delete me
 #include <stdio.h>
 
-typedef struct map_cell_t {
-	int x;
-	int y;
-	struct map_cell_t *next;
-} map_cell;
 
-typedef struct {
-	map_cell *head;
-	map_cell *tail;
-	map_cell *cur;
-} map_data;
+struct map_data_t {
+	cell_list *levels;
+	intermap inter;
+};
+
+
+static cell_list *map_get_level(map *map, int t);
 
 
 void map_init(map *map, int duration, int width, int height) {
 	map->duration = duration;
 	map->width    = width;
 	map->height   = height;
+	map->data = malloc(sizeof(map_data));
 	
-	map_data *levels = calloc(duration, sizeof(map_data));
-	map_cell *cells  = calloc(duration, sizeof(map_cell));
+	map->data->levels = calloc(duration, sizeof(cell_list));
+	intermap_init(&map->data->inter, width*height);
 	
-	map->data = levels;
-	
-	// prepare dummies
-	for (int i = 0; i < duration; ++i) {
-		levels[i].head = &cells[i];
-		levels[i].tail = &cells[i];
-		levels[i].cur  = &cells[i];
-		
-		cells[i].next = NULL;
-	}
+	// init lists
+	for (int i = 0; i < duration; ++i)
+		cell_list_init(&map->data->levels[i]);
 }
 
 void map_free(map *map) {
-	map_data *data = (map_data *) map->data;
+	cell_list *levels = map->data->levels;
 	
-	for (int t = 0; t < map->duration; ++t) {
-		// first non-dummy element
-		map_cell *cur = data[t].head->next;
-		
-		// free each non-dummy element
-		while (cur) {
-			map_cell *next = cur->next;
-			free(cur);
-			cur = next;
-		}
-	}
+	for (int t = 0; t < map->duration; ++t)
+		cell_list_free(&levels[t]);
 	
-	// free list dummies
-	free(data[0].head);
-	// free levels
+	intermap_free(&map->data->inter);
+	free(map->data->levels);
 	free(map->data);
 }
 
+intermap *map_list_get_intermap(map *map) {
+	return &map->data->inter;
+}
+
+cell_list *map_get_level(map *map, int t) {
+	return &map->data->levels[t];
+}
+
+void map_list_fill_intermap(map *map) {
+	int x, y;
+	map_restart(map, 0);
+	while (map_next(map, 0, &x, &y))
+		intermap_append(&map->data->inter, map->width, map->height, x, y);
+	
+	cell_list_empty(&map->data->levels[0]);
+}
+
+void map_list_commit(map *map, int t) {
+	cell_list *level = map_get_level(map, t);
+	
+	intermap_commit(&map->data->inter, level);
+}
+
+void map_list_empty_touched_oborder(map *map) {
+	cell_list_empty(&map->data->inter.touched_oborder);
+}
+
+void map_list_empty_touched_iborder(map *map) {
+	cell_list_empty(&map->data->inter.touched_iborder);
+}
+
+void map_list_empty_touched_core(map *map) {
+	cell_list_empty(&map->data->inter.touched_core);
+}
+
+void map_list_reset_neighbors(map *map) {
+	intermap_reset_neighbors(&map->data->inter, map->width * map->height);
+}
+
 void map_append(map *map, int t, int x, int y) {
-	map_data *levels = (map_data *) map->data;
-	map_data *level = &levels[t];
+	cell_list *level = map_get_level(map, t);
 	
-	// create new cell
-	map_cell *cell = calloc(1, sizeof(cell));
-	cell->x = x;
-	cell->y = y;
-	cell->next = NULL;
-	
-	// append new cell
-	level->tail->next = cell;
-	level->tail = cell;
+	cell_list_append(level, x, y);
 }
 
 bool map_next(map *map, int t, int *x, int *y) {
-	map_data *levels = (map_data *) map->data;
-	map_data *level = &levels[t];
+	cell_list *level = map_get_level(map, t);
 	
-	map_cell *next = level->cur->next;
-	
-	if (next) {
-		*x = next->x;
-		*y = next->y;
-		level->cur = next;
-		
-		return true;
-	} else {
-		return false;
-	}
-	
+	return cell_list_next(level, x, y);
 }
 
 void map_restart(map *map, int t) {
-	map_data *levels = (map_data *) map->data;
-	map_data *level = &levels[t];
+	cell_list *level = map_get_level(map, t);
 	
-	level->cur = level->head;
+	cell_list_restart(level);
 }
 
 void map_print(map *map, int t, int x0, int y0, int x1, int y1) {
-	int width  = x1 - x0;
-	int height = y1 - y0;
+	int width  = x1 - x0 + 1;
+	int height = y1 - y0 + 1;
 	
 	bool arr[width][height];
 	memset(arr, 0, width*height);
 	
-	map_restart(map, t);
-	
 	int x, y;
 	
 	// collect living cells
+	map_restart(map, t);
 	while (map_next(map, t, &x, &y)) {
 		if (x >= x0 && x <= x1 &&
 			y >= y0 && y <= y1   )
@@ -123,8 +120,8 @@ void map_print(map *map, int t, int x0, int y0, int x1, int y1) {
 	// print cells
 	printf("t=%d x=%d-%d y=%d-%d:\n", t, x0, x1, y0, y1);
 
-	for (int x = 0; x < width; ++x) {
-		for (int y = 0; y < height; ++y) {
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
 			if (arr[x][y])
 				printf("X");
 			else
