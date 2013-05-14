@@ -30,6 +30,10 @@ int main(int argc, char** argv)
 		}
 	} else
 	{
+		// TODO:
+		//map_width = 8*(size-1);
+		//map_heigh = 16;
+
 		if(rank == 0)
 		{
 			int dot[2];
@@ -43,39 +47,33 @@ int main(int argc, char** argv)
 				while(count < size-1)
 				{
 					MPI_Recv(dot, 2, MPI_INT, MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					if(dot[0] != -1 || dot[1] != -1)
-						map_add(map, dot[0], dot[1]);
-					else
+					if(dot[0] == -1 && dot[1] == -1)
 						count++;
+					else
+						map_add(map, dot[0], dot[1]);
 				}
-				printf("ALL:\n");
 				map_print(map);
+
+				map_free(map);
 			}
 		} else
 		{
-			size--;
-			rank--;
-			printf("Init rank:%i by size:%i\n", rank, size);
-
 			map_t* map = calloc(1, sizeof(map_t));
-			map_init(map, 16/(size), 16);
+			map_init(map, 16/(size-1), 16);
 			map_fill_random(map);
 			while(true)
 			{
+				int offset = (rank-1)*(16/(size-1));
 				for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
 				{
-					int dot[2] = {cell_i->x, cell_i->y};
+					int dot[2] = {offset+cell_i->x, cell_i->y};
 					MPI_Send(dot, 2, MPI_INT, 0, 0, MPI_COMM_WORLD);
 				}
 				int dot[2] = {-1, -1};
 				MPI_Send(dot, 2, MPI_INT, 0, 0, MPI_COMM_WORLD);
 				
-				printf("RANK: %i\n", rank);
-				map_print(map);
-				
 				calc_next_tick(map, rank, size);
 				sleep(1);
-				
 			}
 		}
 	}
@@ -104,11 +102,17 @@ void sendBorders(map_t* map, int rank, int size)
 			map_border_right[y] = 1;
 	}
 
-	if(rank > 0)
+	// Send to left neighbor.
+	if(rank > 1)
+	{
 		MPI_Send(map_border_left,  map->height, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
+	}
 
-	if(rank < size-2)
+	// Send to right neighbor.
+	if(rank < size-1)
+	{
 		MPI_Send(map_border_right, map->height, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
+	}
 }
 
 // Receive borders from neighbors.
@@ -117,7 +121,8 @@ void recvBorders(map_t* map, int rank, int size)
 	int map_border_left[map->height];
 	int map_border_right[map->height];
 
-	if(rank > 0)
+	// Receive from left neighbor.
+	if(rank > 1)
 	{
 		MPI_Recv(map_border_left,  map->height, MPI_INT, rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		for(int y = 0; y < map->height; y++)
@@ -126,20 +131,27 @@ void recvBorders(map_t* map, int rank, int size)
 				map_add(map, -1 ,y);
 		}
 	}
-	if(rank < size-2)
+
+	// Receive from right neighbor.
+	if(rank < size-1)
 	{
 		MPI_Recv(map_border_right, map->height, MPI_INT, rank+1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		for(int y = 0; y < map->height; y++)
 		{
-			if(map_border_left[y] == 1)
+			if(map_border_right[y] == 1)
 				map_add(map, map->width ,y);
 		}
 	}
 }
 
-// Adjust the rules of conway's game-of-life.
+// Apply the rules of conway's game-of-life.
 void calc_next_tick(map_t* map, int rank, int size)
 {
+	//if(rank == 1)
+	//{
+	//	printf("rank:%i BEFORE\n", rank);
+	//	map_print(map);
+	//}
 
 	if(rank % 2 == 0)
 	{
@@ -150,6 +162,12 @@ void calc_next_tick(map_t* map, int rank, int size)
 		recvBorders(map, rank, size);
 		sendBorders(map, rank, size);
 	}
+
+	//if(rank == 1)
+	//{
+	//	printf("rank:%i AFTER\n", rank);
+	//	map_print2(map, 1);
+	//}
 
 	// Count the neighboring cells.
 	int  map_count[map->width+4][map->height+2]; // added an extra border around
@@ -208,6 +226,8 @@ void calc_next_tick(map_t* map, int rank, int size)
 			}
 		}
 	}
-	// FIXME: free(map)
+
+	map_free(map);
+
 	*map = *map_new;
 }

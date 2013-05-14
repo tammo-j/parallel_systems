@@ -13,6 +13,17 @@ void map_init(map_t* map, int width, int height)
 	map->height = height;
 }
 
+void map_free(map_t* map)
+{
+	for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
+	{
+		free(cell_i);
+	}
+	map->head = NULL;
+	map->tail = NULL;
+	map->curr = NULL;
+}
+
 void map_add(map_t* map, int x, int y)
 {	
 	// create new cell
@@ -112,7 +123,6 @@ cell_t* map_get_next(map_t* map)
 
 void map_print(map_t* map)
 {
-	/*
 	for(int x = 0; x < 10; x++)
 		printf("%i", x);
 	for(int x = 10; x < map->width; x++)
@@ -123,7 +133,6 @@ void map_print(map_t* map)
 	for(int x = 10; x < map->width; x++)
 		printf("%i", x%10);
 	printf("\n");
-	*/
 	for(int x = 0; x < map->width; x++)
 		printf("-");
 	printf("\n");
@@ -136,9 +145,48 @@ void map_print(map_t* map)
 		cli_arr[cell_i->x][cell_i->y] = true;
 	}
 
-	for(int x = 0; x < map->width; x++)
+	for(int y = 0; y < map->height; y++)
 	{
-		for(int y = 0; y < map->height; y++)
+		for(int x = 0; x < map->width; x++)
+		{
+			if(cli_arr[x][y] == true)
+				printf("X");
+			else
+				printf(" ");
+		}
+		printf("\n");
+	}
+}
+
+void map_print2(map_t* map, int xoffset)
+{
+	for(int x = 0; x < 10; x++)
+		printf("%i", x);
+	for(int x = 10; x < map->width+xoffset; x++)
+		printf("%i", x/10);
+	printf("\n");
+	for(int x = 0; x < 10; x++)
+		printf(" ");
+	for(int x = 10; x < map->width+xoffset; x++)
+		printf("%i", x%10);
+	printf("\n");
+	for(int x = 0; x < map->width+xoffset; x++)
+		printf("-");
+	printf("\n");
+	
+	bool cli_arr[map->width+xoffset][map->height]; 
+	memset(cli_arr, false, sizeof(cli_arr));
+
+	for(cell_t* cell_i = map_get_next(map); cell_i != NULL; cell_i = map_get_next(map))
+	{
+		cli_arr[cell_i->x][cell_i->y] = true;
+		if(cell_i->x == map->width)
+			printf("here x:%i, y:%i\n", cell_i->x, cell_i->y);
+	}
+
+	for(int y = 0; y < map->height; y++)
+	{
+		for(int x = 0; x < map->width+xoffset; x++)
 		{
 			if(cli_arr[x][y] == true)
 				printf("X");
