@@ -125,13 +125,13 @@ void sendBorders(map_t* map, int rank, int size)
 			map_border_right[y] = 1;
 	}
 
-	// Send to left neighbor.
-	if(rank > 1)
-		MPI_Send(map_border_left,  map->height, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
-
 	// Send to right neighbor.
 	if(rank < size-1)
 		MPI_Send(map_border_right, map->height, MPI_INT, rank+1, 0, MPI_COMM_WORLD);
+	
+	// Send to left neighbor.
+	if(rank > 1)
+		MPI_Send(map_border_left,  map->height, MPI_INT, rank-1, 0, MPI_COMM_WORLD);
 }
 
 // Receive borders from neighbors.
