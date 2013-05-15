@@ -4,102 +4,130 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include <mpi.h>
+
+#include "grid.h"
 #include "map.h"
 #include "intermap.h"
 #include "algorithm.h"
 #include "communication.h"
 
+
+#define ROOT 0 // don't change because of merge offset
+
+
+static void print_world(map *map);
+static void copy_map(map *m1, map *m2, int x0, int y0);
+
 int main(int argc, char **argv) {
-	int width = 52;
-	int height = 52;
-	int duration = 20;
+	MPI_Init(&argc, &argv);
 	
-	comm_init(duration, 5, 5);
+	int rank;
+	int size;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	
-	map world;
+	// grid size
+	int gwidth = 2;
+	int gheight = 3;
 	
-	map_init(&world, duration, width, height);
+	// individual size
+	int nwidth = 25;
+	int nheight = 20;
 	
+	// world size
+	int wwidth  = gwidth  * nwidth;
+	int wheight = gheight * nheight;
+	int wduration = 20;
+	
+	grid_init(gwidth, gheight);
+	comm_init();
+	
+	int nx, ny;
+	grid_get(&nx, &ny);
+	
+	// create whole field
+	map initial;
+	map_init(&initial, 1, wwidth+2, wheight+2);
 	for (int x = 14; x <= 34; ++x) {
 		for (int y = 14; y <= 34; ++y) {
-			map_append(&world, 0, x, y);
+			map_append(&initial, 0, x, y);
 		}
 	}
 	
-	
-	map partial_world[5][5];
-	intermap inter[5][5];
+	map partial;
+	intermap inter;
 	
 	// distribute
-	for (int i = 0; i < 5; ++i) {
-		for (int j = 0; j < 5; ++j) {
-			map_init(&partial_world[i][j], duration, 12, 12);
-			intermap_init(&inter[i][j], 12, 12);
-		}
-	}
+	map_init(&partial, wduration, nwidth+2, nheight+2);
+	intermap_init(&inter, nwidth+2, nheight+2);
 			
 	int x, y;
-	map_restart(&world, 0);
-	while (map_next(&world, 0, &x, &y))
-		map_append(&partial_world[(x-1)/10][(y-1)/10], 0, (x-1)%10+1, (y-1)%10+1);
+	map_restart(&initial, 0);
+	while (map_next(&initial, 0, &x, &y)) {
+		int x0 = nx*nwidth;
+		int y0 = ny*nheight;
+		int x1 = x0 + nwidth  + 1;
+		int y1 = y0 + nheight + 1;
+		
+		if (x > x0 && x < x1 &&
+			y > y0 && y < y1)
+		{
+			map_append(&partial, 0, x-x0, y-y0);
+		}
+	}
 	
-	
+	map_free(&initial);
 	
 	// calculate
-	for (int i = 0; i < 5; ++i) {
-		for (int j = 0; j < 5; ++j) {
-			intermap_fill(&inter[i][j], &partial_world[i][j]);
-		}
-	}
-	for (int t = 0; t < duration-1; ++t) {
-		for (int i = 0; i < 5; ++i) {
-			for (int j = 0; j < 5; ++j) {
-				comm_set_current_node(i, j);
-				printf("now %d:%d:%d\n", t, i, j);
-				conway_solve_border(&inter[i][j], t);
-			}
-		}
-		for (int i = 0; i < 5; ++i) {
-			for (int j = 0; j < 5; ++j) {
-				comm_set_current_node(i, j);
-				printf("now %d:%d:%d\n", t, i, j);
-				conway_solve_core(&partial_world[i][j], &inter[i][j], t);
-			}
-		}
-	}
-	for (int i = 0; i < 5; ++i) {
-		for (int j = 0; j < 5; ++j) {
-			intermap_commit(&inter[i][j], &partial_world[i][j], duration-1);
-		}
-	}
+	conway_solve(&partial, &inter);
 	
-	map merge_world;
-	map_init(&merge_world, duration, width, height);
+	printf("calculation done! %d\n", rank);
 	
-	// merge
-	for (int t = 0; t < duration; ++t) {
-		for (int i = 0; i < 5; ++i) {
-			for (int j = 0; j < 5; ++j) {
-				map *cur = &partial_world[i][j];
-				
-				int x0 = i*10;
-				int y0 = j*10;
-				
-				map_restart(cur, t);
-				while (map_next(cur, t, &x, &y))
-					map_append(&merge_world, t, x0+x, y0+y);
-			}
-		}
-	}
+	MPI_Barrier(MPI_COMM_WORLD);
 	
-	// print
-	for (int t = 0; t < duration; ++t)
-		map_print(&merge_world, t, 0, 0, width-1, height-1);
-	
-	map_free(&merge_world);
+	// share & merge
+	if (rank == ROOT) {
+		map world;
+		map_init(&world, wduration, wwidth, wheight);
 		
-	map_free(&world);
+		// note that the offset is fixed here (no particular reason)
+		copy_map(&world, &partial, 0, 0);
+		map_free(&partial);
+		
+		// recv from each node except yourself
+		for (int i = 0; i < gwidth*gheight-1 ; ++i) {
+			map_init(&partial, wduration, nwidth+2, nheight+2);
+			
+			int sx, sy;
+			comm_recv_partial(&partial, MPI_ANY_SOURCE, &sx, &sy);
+			copy_map(&world, &partial, sx*nwidth, sy*nheight);
+			map_free(&partial);
+		}
+		
+		print_world(&world);
+		
+		map_free(&world);
+	} else {
+		comm_send_partial(&partial, ROOT);
+	}
+	
+	MPI_Finalize();
 	
 	return EXIT_SUCCESS;
+}
+
+void print_world(map *map) {
+	for (int t = 0; t < map->duration; ++t)
+		map_print(map, t, 1, 1, map->width, map->height);
+}
+
+void copy_map(map *dst, map *src, int x0, int y0) {
+	for (int t = 0; t < src->duration; ++t) {
+		int x, y;
+		map_restart(src, t);
+		while (map_next(src, t, &x, &y))
+			map_append(dst, t, x0+x, y0+y);
+	}
 }
 

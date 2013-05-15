@@ -25,44 +25,20 @@ void map_free(map *map) {
 	free(map->levels);
 }
 
-/*intermap *map_list_get_intermap(map *map) {*/
-/*	return &map->data->inter;*/
-/*}*/
-
 cell_list *map_get_level(map *map, int t) {
 	return &map->levels[t];
 }
 
-/*void map_list_fill_intermap(map *map) {*/
-/*	int x, y;*/
-/*	map_restart(map, 0);*/
-/*	while (map_next(map, 0, &x, &y))*/
-/*		intermap_append(&map->data->inter, map->width, map->height, x, y);*/
-/*	*/
-/*	cell_list_empty(&map->levels[0]);*/
-/*}*/
-
-/*void map_list_commit(map *map, int t) {*/
-/*	cell_list *level = map_get_level(map, t);*/
-/*	*/
-/*	intermap_commit(&map->data->inter, level);*/
-/*}*/
-
-/*void map_list_empty_touched_oborder(map *map) {*/
-/*	cell_list_empty(&map->data->inter.touched_oborder);*/
-/*}*/
-
-/*void map_list_empty_touched_iborder(map *map) {*/
-/*	cell_list_empty(&map->data->inter.touched_iborder);*/
-/*}*/
-
-/*void map_list_empty_touched_core(map *map) {*/
-/*	cell_list_empty(&map->data->inter.touched_core);*/
-/*}*/
-
-/*void map_list_reset_neighbors(map *map) {*/
-/*	intermap_reset_neighbors(&map->data->inter, map->width * map->height);*/
-/*}*/
+int map_count(map *map, int t) {
+	int sum = 0;
+	
+	int x, y;
+	map_restart(map, t);
+	while (map_next(map, t, &x, &y))
+		++sum;
+	
+	return sum;
+}
 
 void map_append(map *map, int t, int x, int y) {
 	cell_list *level = map_get_level(map, t);

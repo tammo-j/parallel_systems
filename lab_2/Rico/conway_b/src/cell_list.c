@@ -4,11 +4,11 @@
 #include <string.h>
 
 
-typedef struct cell_list_node_t {
+struct cell_list_node_t {
 	int x;
 	int y;
 	struct cell_list_node_t *next;
-} cell_list_node;
+};
 
 
 void cell_list_init(cell_list *l) {

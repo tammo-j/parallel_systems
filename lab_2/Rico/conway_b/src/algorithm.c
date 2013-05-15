@@ -2,24 +2,8 @@
 
 #include <string.h>
 
+#include "grid.h"
 #include "communication.h"
-
-
-// TODO remove
-#include <stdio.h>
-
-static void print_neighbors(intermap *inter) {
-	int width = inter->width;
-	int height = inter->height;
-	char (*neighbors)[height] = (char (*)[height]) inter->neighbors;
-	
-	for (int j = 0; j < height; ++j) {
-		for (int i = 0; i < width; ++i) {
-			printf("%d", neighbors[i][j]);
-		}
-		printf("\n");
-	}
-}
 
 
 static void tick(map *map, intermap *inter, int t);
@@ -36,7 +20,11 @@ static int max(int a, int b) {
 	return a > b ? a : b;
 }
 
+static int gneighbors;
+
 void conway_solve(map *map, intermap *inter) {
+	gneighbors = grid_neighbors();
+
 	intermap_fill(inter, map);
 	
 	// for each tick
@@ -46,35 +34,25 @@ void conway_solve(map *map, intermap *inter) {
 	intermap_commit(inter, map, map->duration-1);
 }
 
-void conway_solve_border(intermap *inter, int t) {
+void tick(map *map, intermap *inter, int t) {
 	intermap_reset_neighbors(inter);
 	
 	// touch from inner border and send
 	touch_from(inter, &inter->current_iborder);
 	send_neighbors(inter, t);
-}
-
-void conway_solve_core(map *map, intermap *inter, int t) {
 	cell_list_empty(&inter->touched_oborder);
 	
 	touch_from(inter, &inter->current_core);
-	
 	calculate_core(inter);
 	cell_list_empty(&inter->touched_core);
 	
 	// recv touched inner border and calculate it
 	recv_neighbors(inter, t);
-	
 	calculate_iborder(inter);
 	cell_list_empty(&inter->touched_iborder);
 	
 	// commit changes
 	intermap_commit(inter, map, t);
-}
-
-void tick(map *map, intermap *inter, int t) {
-	conway_solve_border(inter, t);
-	conway_solve_core(map, inter, t);
 }
 
 void touch(intermap *inter, int x, int y) {
@@ -189,14 +167,14 @@ void send_neighbors(intermap *inter, int t) {
 		msgs[i].size = 0;
 		
 		switch (i) {
-			case COMM_TOP:          msgs[i].neighbors = top;           break;
-			case COMM_BOTTOM:       msgs[i].neighbors = bottom;        break;
-			case COMM_LEFT:         msgs[i].neighbors = left;          break;
-			case COMM_RIGHT:        msgs[i].neighbors = right;         break;
-			case COMM_TOP_LEFT:     msgs[i].neighbors = &top_left;     break;
-			case COMM_TOP_RIGHT:    msgs[i].neighbors = &top_right;    break;
-			case COMM_BOTTOM_LEFT:  msgs[i].neighbors = &bottom_left;  break;
-			case COMM_BOTTOM_RIGHT: msgs[i].neighbors = &bottom_right; break;
+			case GRID_TOP:          msgs[i].neighbors = top;           break;
+			case GRID_BOTTOM:       msgs[i].neighbors = bottom;        break;
+			case GRID_LEFT:         msgs[i].neighbors = left;          break;
+			case GRID_RIGHT:        msgs[i].neighbors = right;         break;
+			case GRID_TOP_LEFT:     msgs[i].neighbors = &top_left;     break;
+			case GRID_TOP_RIGHT:    msgs[i].neighbors = &top_right;    break;
+			case GRID_BOTTOM_LEFT:  msgs[i].neighbors = &bottom_left;  break;
+			case GRID_BOTTOM_RIGHT: msgs[i].neighbors = &bottom_right; break;
 		}
 	}
 	
@@ -206,22 +184,22 @@ void send_neighbors(intermap *inter, int t) {
 	while (cell_list_next(touched, &x, &y)) {
 		if (x == 0) {                 // left with corners
 			if (y == 0) {             // top left corner
-				msg = &msgs[COMM_TOP_LEFT];
+				msg = &msgs[GRID_TOP_LEFT];
 			} else if (y == height-1) // bottom left corner
-				msg = &msgs[COMM_BOTTOM_LEFT];
+				msg = &msgs[GRID_BOTTOM_LEFT];
 			else                      // top border
-				msg = &msgs[COMM_LEFT];
-		} else if (x == height-1) {   // right with corners
+				msg = &msgs[GRID_LEFT];
+		} else if (x == width-1) {   // right with corners
 			if (y == 0)               // top right corner
-				msg = &msgs[COMM_TOP_RIGHT];
+				msg = &msgs[GRID_TOP_RIGHT];
 			else if (y == height-1)   // bottom right corner
-				msg = &msgs[COMM_BOTTOM_RIGHT];
+				msg = &msgs[GRID_BOTTOM_RIGHT];
 			else                      // bottom border
-				msg = &msgs[COMM_RIGHT];
+				msg = &msgs[GRID_RIGHT];
 		} else if (y == 0) {          // top without corners
-			msg = &msgs[COMM_TOP];
+			msg = &msgs[GRID_TOP];
 		} else {                      // bottom without corners
-			msg = &msgs[COMM_BOTTOM];
+			msg = &msgs[GRID_BOTTOM];
 		}
 		
 		info = &msg->neighbors[msg->size++];
@@ -232,7 +210,7 @@ void send_neighbors(intermap *inter, int t) {
 	
 	// send to every neighbor
 	for (int i = 0; i < 8; ++i)
-		comm_send(i, t, &msgs[i]);
+		comm_send_neighbors(i, t, &msgs[i]);
 }
 
 // TODO also pretty bad
@@ -250,10 +228,9 @@ void recv_neighbors(intermap *inter, int t) {
 	conway_msg msg;
 	msg.neighbors = infos;
 	
-	// TODO consider border cases (remove dirty solution from comm~.c)
 	// receive from each neighbor
-	for (int i = 0; i < 8; ++i) {
-		comm_recv(&src, t, &msg);
+	for (int i = 0; i < gneighbors; ++i) {
+		comm_recv_neighbors(&src, t, &msg);
 		
 		for (int j = 0; j < msg.size; ++j) {
 			int x = infos[j].x;
@@ -263,14 +240,14 @@ void recv_neighbors(intermap *inter, int t) {
 			
 			// translate coordinates
 			switch (src) {
-				case COMM_TOP:          tx = x;       ty = 1;        break;
-				case COMM_BOTTOM:       tx = x;       ty = height-2; break;
-				case COMM_LEFT:         tx = 1;       ty = y;        break;
-				case COMM_RIGHT:        tx = width-2; ty = y;        break;
-				case COMM_TOP_LEFT:     tx = 1;       ty = 1;        break;
-				case COMM_TOP_RIGHT:    tx = width-2; ty = 1;        break;
-				case COMM_BOTTOM_LEFT:  tx = 1;       ty = height-2; break;
-				case COMM_BOTTOM_RIGHT: tx = width-2; ty = height-2; break;
+				case GRID_TOP:          tx = x;       ty = 1;        break;
+				case GRID_BOTTOM:       tx = x;       ty = height-2; break;
+				case GRID_LEFT:         tx = 1;       ty = y;        break;
+				case GRID_RIGHT:        tx = width-2; ty = y;        break;
+				case GRID_TOP_LEFT:     tx = 1;       ty = 1;        break;
+				case GRID_TOP_RIGHT:    tx = width-2; ty = 1;        break;
+				case GRID_BOTTOM_LEFT:  tx = 1;       ty = height-2; break;
+				case GRID_BOTTOM_RIGHT: tx = width-2; ty = height-2; break;
 			}
 			
 			if (n[tx][ty] == 0)
@@ -281,4 +258,20 @@ void recv_neighbors(intermap *inter, int t) {
 	}
 }
 
+/* // TODO remove
+#include <stdio.h>
+
+static void print_neighbors(intermap *inter) {
+	int width = inter->width;
+	int height = inter->height;
+	char (*neighbors)[height] = (char (*)[height]) inter->neighbors;
+	
+	for (int j = 0; j < height; ++j) {
+		for (int i = 0; i < width; ++i) {
+			printf("%d", neighbors[i][j]);
+		}
+		printf("\n");
+	}
+}
+*/
 

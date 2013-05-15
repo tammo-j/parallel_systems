@@ -18,6 +18,7 @@ void map_free(map *map);
 
 cell_list *map_get_level(map *map, int t);
 
+int map_count(map *map, int t);
 void map_append(map *map, int t, int x, int y);
 bool map_next(map *map, int t, int *x, int *y);
 void map_restart(map *map, int t);

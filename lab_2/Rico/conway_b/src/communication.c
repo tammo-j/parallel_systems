@@ -1,182 +1,110 @@
 #include "communication.h"
 
 #include <stdlib.h>
+#include <mpi.h>
 
+#include "grid.h"
 
-struct msg_stack_t {
-	int src;
-	conway_msg *msg;
-	struct msg_stack_t *next;
-};
+static void define_types();
 
-typedef struct msg_stack_t msg_stack;
+static MPI_Datatype mpi_neighbor_info;
+static MPI_Datatype mpi_cell_info;
 
-static int comm_dir2id(int direction);
-static int comm_id2dir(int id);
-static int comm_dst2src(int src);
-
-static int g_xsize = -1;
-static int g_ysize = -1;
-static int g_duration = -1;
-static int g_nqueues = -1;
-static int g_x = -1;
-static int g_y = -1;
-static msg_stack *g_msg_queues = NULL;
-
-// TODO should just need one queue with MPI
-void comm_init(int duration, int xsize, int ysize) {
-	g_duration = duration;
-	g_xsize = xsize;
-	g_ysize = ysize;
-	g_nqueues = duration*xsize*ysize;
+void define_types() {
+	// define mpi_cell_info
 	
-	g_msg_queues = calloc(g_nqueues, sizeof(*g_msg_queues));
+    int cell_info_count = 3;
+    int cell_info_lengths[] = {1, 1, 1};
+    MPI_Aint cell_info_offsets[] = {0, sizeof(int), 2*sizeof(int)};
+    MPI_Datatype cell_info_types[] = {MPI_INT, MPI_INT, MPI_INT};
+    
+    MPI_Type_create_struct(cell_info_count, cell_info_lengths, cell_info_offsets, cell_info_types, &mpi_cell_info);
+    MPI_Type_commit(&mpi_cell_info);
+    
+	// define mpi_neighbor_info
 	
-	for (int i = 0; i < g_nqueues; ++i) {
-		g_msg_queues[i].msg = NULL;
-		g_msg_queues[i].next = NULL;
-	}
+    int neighbor_info_count = 3;
+    int neighbor_info_lengths[] = {1, 1, 1};
+    MPI_Aint neighbor_info_offsets[] = {0, sizeof(int), 2*sizeof(int)};
+    MPI_Datatype neighbor_info_types[] = {MPI_INT, MPI_INT, MPI_INT};
+    
+    MPI_Type_create_struct(neighbor_info_count, neighbor_info_lengths, neighbor_info_offsets, neighbor_info_types, &mpi_neighbor_info);
+    MPI_Type_commit(&mpi_neighbor_info);
+    
 }
 
-void comm_free() {
-	msg_stack *cur, *next;
-	
-	for (int i = 0; i < g_nqueues; ++i) {
-		cur = g_msg_queues[i].next;
-		
-		while (cur) {
-			next = cur->next;
-			free(cur);
-			cur = next;
-		}
-	}
-	
-	free(g_msg_queues);
+void comm_init() {
+	define_types();
 }
 
-// TODO should be obsolet with MPI
-void comm_set_current_node(int x, int y) {
-	g_x = x;
-	g_y = y;
-}
-
-void comm_send(int dst, int t, conway_msg *msg) {
-	int id = comm_dir2id(dst);
+void comm_send_neighbors(int dst_dir, int t, conway_msg *msg) {
+	int id = grid_dir2id(dst_dir);
 	
 	// no neighbor
 	if (id == -1)
 		return;
-	
-	msg_stack *stack = &g_msg_queues[id*g_duration + t];
-	
-	// allocations
-	msg_stack *new = malloc(sizeof(*new));
-	new->msg = malloc(sizeof(*new->msg));
-	new->msg->neighbors = calloc(msg->size, sizeof(*new->msg->neighbors));
-	
-	// copy message
-	new->msg->size = msg->size;
-	new->src = comm_dst2src(dst);
-	
-	for (int i = 0; i < msg->size; ++i)
-		new->msg->neighbors[i] = msg->neighbors[i];
 		
-	// push on stack
-	new->next = stack->next;
-	stack->next = new;
+	MPI_Send(msg->neighbors, msg->size, mpi_neighbor_info, id, t, MPI_COMM_WORLD);
 }
 
-void comm_recv(int *src, int t, conway_msg *msg) {
-	int dst_id = g_x*g_ysize + g_y;
-	int stack_id = dst_id*g_duration + t;
+void comm_recv_neighbors(int *src_dir, int t, conway_msg *msg) {
+	int len;
+	MPI_Status status;
+
+	MPI_Probe(MPI_ANY_SOURCE, t, MPI_COMM_WORLD, &status);
+	MPI_Get_count(&status, mpi_neighbor_info, &len);
 	
-	msg_stack *stack = &g_msg_queues[stack_id];
-	msg_stack *top = stack->next;
+	MPI_Recv(msg->neighbors, len, mpi_neighbor_info, MPI_ANY_SOURCE, t, MPI_COMM_WORLD, &status);
+	msg->size = len;
 	
-	// TODO very very dirty
-	// no neighbor
-	if (!top) {
-		*src = 0; // some source (doesn't matter since empty)
-		msg->size = 0;
-		return;
-	}
-	
-	*src = top->src;
-	
-	// copy message
-	msg->size = top->msg->size;
-	for (int i = 0; i < msg->size; ++i)
-		msg->neighbors[i] = top->msg->neighbors[i];
-	
-	// pop from stack
-	stack->next = top->next;
-	
-	// deallocations
-	free(top->msg->neighbors);
-	free(top->msg);
-	free(top);
+	*src_dir = grid_id2dir(status.MPI_SOURCE);
 }
 
-int comm_dst2src(int dst) {
-	switch (dst) {
-		case COMM_TOP:          return COMM_BOTTOM;
-		case COMM_BOTTOM:       return COMM_TOP;
-		case COMM_LEFT:         return COMM_RIGHT;
-		case COMM_RIGHT:        return COMM_LEFT;
-		case COMM_TOP_LEFT:     return COMM_BOTTOM_RIGHT;
-		case COMM_TOP_RIGHT:    return COMM_BOTTOM_LEFT;
-		case COMM_BOTTOM_LEFT:  return COMM_TOP_RIGHT;
-		case COMM_BOTTOM_RIGHT: return COMM_TOP_LEFT;
-		default:                return -1;
+		
+void comm_recv_partial(map *map, int src_id, int *sx, int *sy) {
+	int len;
+	MPI_Status status;
+
+	MPI_Probe(src_id, 0, MPI_COMM_WORLD, &status);
+	MPI_Get_count(&status, mpi_cell_info, &len);
+	
+	cell_info cells[len];
+		
+	MPI_Recv(cells, len, mpi_cell_info, src_id, 0, MPI_COMM_WORLD, &status);
+	
+	grid_id2grid(status.MPI_SOURCE, sx, sy);
+	
+	for (int i = 0; i < len; ++i) {
+		int x = cells[i].x;
+		int y = cells[i].y;
+		int t = cells[i].t;
+		
+		map_append(map, t, x, y);
 	}
 }
 
-int comm_dir2id(int direction) {
-	int x = g_x;
-	int y = g_y;
+void comm_send_partial(map *map, int dst_id) {
+	// count elements
+	int size = 0;
+	for (int t = 0; t < map->duration; ++t)
+		size += map_count(map, t);
 	
-	switch (direction) {
-		case COMM_TOP:                  y -= 1; break;
-		case COMM_BOTTOM:               y += 1; break;
-		case COMM_LEFT:         x -= 1;         break;
-		case COMM_RIGHT:        x += 1;         break;
-		case COMM_TOP_LEFT:     x -= 1; y -= 1; break;
-		case COMM_TOP_RIGHT:    x += 1; y -= 1; break;
-		case COMM_BOTTOM_LEFT:  x -= 1; y += 1; break;
-		case COMM_BOTTOM_RIGHT: x += 1; y += 1; break;
+	cell_info cells[size];
+	int i = 0;
+	
+	// fill elements
+	for (int t = 0; t < map->duration; ++t) {
+		int x, y;
+		map_restart(map, t);
+		while (map_next(map, t, &x, &y)) {
+			cell_info *cell = &cells[i++];
+			
+			cell->x = x;
+			cell->y = y;
+			cell->t = t;
+		}
 	}
 	
-	if (x < 0 || x >= g_xsize ||
-		y < 0 || y >= g_ysize)
-	{
-		return -1;
-	}
-	
-	return x*g_ysize + y;
-}
-
-int comm_id2dir(int id) {
-	int dx = id / g_ysize - g_x;
-	int dy = id % g_ysize - g_y;
-	
-	if (dx == -1) {        // left with corners
-		if (dy == -1)      // top left corner
-			return COMM_TOP_LEFT;
-		else if (dy == 1)  // bottom left corner
-			return COMM_BOTTOM_LEFT;
-		else               // left
-			return COMM_LEFT;
-	} else if (dx == 1) {  // right with corners
-		if (dy == -1)      // top right corner
-			return COMM_TOP_RIGHT;
-		else if (dy == 1)  // bottom right corner
-			return COMM_BOTTOM_RIGHT;
-		else               // right
-			return COMM_RIGHT;
-	} else if (dy == -1) { // top without corners
-		return COMM_TOP;
-	} else {               // bottom without corners
-		return COMM_BOTTOM;
-	}
+	MPI_Send(cells, size, mpi_cell_info, dst_id, 0, MPI_COMM_WORLD);
 }
 
