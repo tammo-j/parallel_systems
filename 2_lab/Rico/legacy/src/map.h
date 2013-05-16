@@ -3,11 +3,13 @@
 
 #include <stdbool.h>
 
+typedef struct map_data_t map_data;
+
 typedef struct {
 	int duration;
 	int width;
 	int height;
-	void *data;
+	map_data *data;
 } map;
 
 void map_init(map *map, int duration, int width, int height);

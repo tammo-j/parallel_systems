@@ -1,0 +1,77 @@
+0123456789
+          
+--------
+        
+   XXX  
+        
+ X    X 
+ X    X 
+ X    X 
+   XXX  
+        
+0123456789
+          
+--------
+    X   
+    X   
+    XX  
+        
+XXX  XXX
+  X X X 
+    XX  
+    X   
+0123456789
+          
+--------
+        
+   XX   
+    XX  
+ X  X   
+ XXX XXX
+  X X  X
+    X   
+    XX  
+0123456789
+          
+--------
+        
+   XXX  
+     X  
+ X      
+ X   XXX
+ XX X  X
+    X   
+    XX  
+0123456789
+          
+--------
+    X   
+    XX  
+     X  
+     X  
+XX   XXX
+ XXXX  X
+    X   
+    XX  
+0123456789
+          
+--------
+    XX  
+    XX  
+     XX 
+    XX  
+XX X X X
+XXXXX  X
+  X     
+    XX  
+0123456789
+          
+--------
+    XX  
+        
+      X 
+        
+X    X  
+X   X X 
+  X  X  
+        
