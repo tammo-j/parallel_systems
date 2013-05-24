@@ -5,7 +5,11 @@
 
 #include <CL/opencl.h>
 
-#define WIDTH (1024*1024)
+#define NUM_GROUPS          3
+#define NUM_ITEMS_PER_GROUP 3
+#define NUM_ELEMS_PER_ITEM  10
+#define NUM_TOTAL_ITEMS     NUM_GROUPS * NUM_ITEMS_PER_GROUP
+#define NUM_TOTAL_ELEMS     NUM_ELEMS_PER_ITEM * NUM_TOTAL_ITEMS
 
 void printBuildError(cl_program program, cl_device_id device)
 {
@@ -23,27 +27,26 @@ int main(int argc, char **argv)
 	int i;
 	cl_int status;
 	cl_device_id mydevice;
-
-	/* Query and select device */
+	
+	// Query and select device
 	cl_uint num_devices;
 	cl_platform_id platform;
 	const int max_devices = 8;
 	cl_device_id device[max_devices];
-
+	
 	clGetPlatformIDs(1, &platform, NULL);
 	clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, max_devices, device, &num_devices);
-
+	
 	if (num_devices > max_devices)
 		num_devices = max_devices;
-
-	struct timespec t;
-	clock_gettime(CLOCK_REALTIME, &t);
-	srand(t.tv_nsec);
+	
+	time_t t = time(NULL);
+	srand(t);
 	i = (int)((float)num_devices * rand() / (RAND_MAX + 1.0));
 	mydevice = device[i];
 	printf("Selected device %d of %d\n", i + 1, num_devices);
-
-	/* Setup context + command queue with selected device */
+	
+	// Setup context + command queue with selected device
 	cl_int errcode;
 	cl_context ctx;
 	cl_context_properties *ctx_prop;
@@ -52,12 +55,12 @@ int main(int argc, char **argv)
 	ctx_prop[1] = (cl_context_properties)platform;
 	ctx = clCreateContext(ctx_prop, 1, &mydevice, NULL, NULL, &errcode);
 	assert(ctx != NULL);
-
+	
 	cl_command_queue cq;
 	cq = clCreateCommandQueue(ctx, mydevice, 0, NULL);
 	assert(cq != NULL);
-
-	/* Get Kernel from File */
+	
+	// Get Kernel from File
 	FILE *kernel_file = fopen("./kernel.cl","r"); 
 	assert(kernel_file != NULL); 
 	fseek(kernel_file, 0L, SEEK_END); 
@@ -66,10 +69,9 @@ int main(int argc, char **argv)
 	char *source = (char*) calloc(sizeof(char), kernel_size+1); 
 	fread(source, kernel_size, 1, kernel_file); 
 	assert(!ferror(kernel_file)); 
-	fclose(kernel_file); 
-	//puts(source); // uncomment to print kernel
+	fclose(kernel_file);
 	
-	/* Compile + create kernel */
+	// Compile + create kernel
 	cl_program program;
 	program = clCreateProgramWithSource(ctx, 1, (const char**)&source, NULL, NULL);
 	assert(program != NULL);
@@ -79,72 +81,49 @@ int main(int argc, char **argv)
 	if (status != CL_SUCCESS)
 		printBuildError(program, mydevice);
 	assert(status == CL_SUCCESS);
-
-	cl_kernel kernel = clCreateKernel(program, "vec_add", NULL);
+	
+	cl_kernel kernel = clCreateKernel(program, "cumulate", NULL);
 	assert(kernel != NULL);
 
-	/* Create memory objects */
-	cl_mem da, db, dc;
-	da = clCreateBuffer(ctx, CL_MEM_READ_ONLY, sizeof(cl_int) * WIDTH, NULL, NULL);
-	db = clCreateBuffer(ctx, CL_MEM_READ_ONLY, sizeof(cl_int) * WIDTH, NULL, NULL);
-	dc = clCreateBuffer(ctx, CL_MEM_WRITE_ONLY, sizeof(cl_int) * WIDTH, NULL, NULL);
-	assert(da != NULL);
-	assert(db != NULL);
-	assert(dc != NULL);
+	// Create memory objects
+	cl_mem cl_arr;
+	cl_arr = clCreateBuffer(ctx, CL_MEM_READ_WRITE, NUM_TOTAL_ELEMS * sizeof(cl_int), NULL, NULL);
+	
+	// Prepare data on host + transfer to device
+	cl_int arr[NUM_TOTAL_ELEMS];
 
+	for (i = 0; i < NUM_TOTAL_ELEMS; ++i)
+		arr[i] = 1;
+	
+	clEnqueueWriteBuffer(cq, cl_arr, CL_TRUE, 0, NUM_TOTAL_ELEMS * sizeof(cl_int), arr, 0, NULL, NULL);
 
-	/* Prepare data on host + transfer to device */
-	cl_int *a = (cl_int *)malloc(sizeof(*a) * WIDTH);
-	cl_int *b = (cl_int *)malloc(sizeof(*b) * WIDTH);
-	cl_int *c = (cl_int *)malloc(sizeof(*c) * WIDTH);
-	for (i = 0; i < WIDTH; i++) {
-		a[i] = i;
-		b[i] = 2 * i + 5;
-		c[i] = 0;
-	}
+	cl_int elems_per_item = NUM_ELEMS_PER_ITEM;
 
-	clEnqueueWriteBuffer(cq, da, CL_TRUE, 0, WIDTH * sizeof(*a), a, 0, NULL, NULL);
-	clEnqueueWriteBuffer(cq, db, CL_TRUE, 0, WIDTH * sizeof(*b), b, 0, NULL, NULL);
-
-	/* Bind kernel arguments + execute kernel */
-	clSetKernelArg(kernel, 0, sizeof(cl_mem), &dc);
-	clSetKernelArg(kernel, 1, sizeof(cl_mem), &da);
-	clSetKernelArg(kernel, 2, sizeof(cl_mem), &db);
-
-	size_t global_work_sizes[] = { WIDTH };
-	const size_t local_work_sizes[] = { 256 };
+	// Bind kernel arguments + execute kernel
+	clSetKernelArg(kernel, 0, sizeof(cl_mem), &cl_arr);
+	
+	size_t global_work_sizes[] = { NUM_TOTAL_ITEMS };
+	const size_t local_work_sizes[] = { NUM_ITEMS_PER_GROUP };
 	status = clEnqueueNDRangeKernel(cq, kernel, 1, NULL, global_work_sizes, local_work_sizes, 0, NULL, NULL);
 	assert(status == CL_SUCCESS);
 	clFinish(cq);
-
-	/* Transfer results back + verify */
-	clEnqueueReadBuffer(cq, dc, CL_TRUE, 0, WIDTH * sizeof(*c), c, 0, NULL, NULL);
-
-	for (i = 0; i < WIDTH; i++) {
-		if (c[i] != a[i] + b[i]) {
-			printf("Verification failed!\n");
-			break;
-		}
+	
+	// Transfer results back + verify
+	clEnqueueReadBuffer(cq, cl_arr, CL_TRUE, 0, NUM_TOTAL_ELEMS * sizeof(*arr), arr, 0, NULL, NULL);
+	
+	for (i = 0; i < NUM_TOTAL_ELEMS; i++) {
+		printf("%d ", arr[i]);
 	}
-	if (i == WIDTH)
-		printf("Verification successful!\n");
-
-	/* Free everything */
-	clReleaseMemObject(da);
-	clReleaseMemObject(db);
-	clReleaseMemObject(dc);
+	
+	// Free everything
+	clReleaseMemObject(cl_arr);
 	clReleaseKernel(kernel);
 	clReleaseProgram(program);
 	clReleaseCommandQueue(cq);
 	clReleaseContext(ctx);
-
-	free(a);
-	free(b);
-	free(c);
+	
 	free(source);
-
+	
 	return 0;
 }
-
-
 

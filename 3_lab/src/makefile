@@ -2,9 +2,9 @@
 CC      = gcc
 CFLAGS  = -std=c99 -Wall
 LIBS    = -lOpenCL -lrt
+SOURCES = cl_scan.c
 BIN_DIR = ../bin
 BIN     = cl_scan
-SOURCES = cl_scan.c
 
 compile: $(BIN_DIR)/$(BIN)
 
