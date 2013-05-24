@@ -1,21 +1,11 @@
 #include <assert.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include <CL/opencl.h>
 
 #define WIDTH (1024*1024)
-
-const char *source =
-""
-"\n__kernel void vec_add(__global int *c, __global int *a, __global int *b)"
-"\n{"
-"\n	int x = get_global_id(0);"
-"\n	c[x] = a[x] + b[x];"
-"\n}"
-;
-
-
 
 void printBuildError(cl_program program, cl_device_id device)
 {
@@ -67,11 +57,23 @@ int main(int argc, char **argv)
 	cq = clCreateCommandQueue(ctx, mydevice, 0, NULL);
 	assert(cq != NULL);
 
+	/* Get Kernel from File */
+	FILE *kernel_file = fopen("./kernel.cl","r"); 
+	assert(kernel_file != NULL); 
+	fseek(kernel_file, 0L, SEEK_END); 
+	size_t kernel_size = ftell(kernel_file); 
+	rewind(kernel_file); 
+	char *source = (char*) calloc(sizeof(char), kernel_size+1); 
+	fread(source, kernel_size, 1, kernel_file); 
+	assert(!ferror(kernel_file)); 
+	fclose(kernel_file); 
+	//puts(source); // uncomment to print kernel
+	
 	/* Compile + create kernel */
 	cl_program program;
-	program = clCreateProgramWithSource(ctx, 1, &source, NULL, NULL);
+	program = clCreateProgramWithSource(ctx, 1, (const char**)&source, NULL, NULL);
 	assert(program != NULL);
-
+	
 	const char *build_opts = NULL;
 	status = clBuildProgram(program, 1, &mydevice, build_opts, NULL, NULL);
 	if (status != CL_SUCCESS)
@@ -139,6 +141,10 @@ int main(int argc, char **argv)
 	free(a);
 	free(b);
 	free(c);
+	free(source);
 
 	return 0;
 }
+
+
+
