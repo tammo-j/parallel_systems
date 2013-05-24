@@ -3,16 +3,16 @@ CC=gcc
 CFLAGS=-Wall
 LIBS=-lOpenCL -lrt
 BIN_DIR=../bin
-BIN=template
+BIN=cl_scan
 
-compile: $(BIN_DIR)
-	$(CC) $(CFLAGS) $(LIBS) -o $(BIN_DIR)/$(BIN) \
-		template.c
+compile: $(BIN_DIR)/$(BIN)
 
 run: $(BIN_DIR)/$(BIN)
 	$(BIN_DIR)/$(BIN)
 
-$(BIN_DIR)/$(BIN): $(BIN_DIR) compile
+$(BIN_DIR)/$(BIN) : $(BIN_DIR)
+	$(CC) $(CFLAGS) $(LIBS) -o $(BIN_DIR)/$(BIN) \
+		cl_scan.c
 
 $(BIN_DIR):
 	mkdir $(BIN_DIR)
