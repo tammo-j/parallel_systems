@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 	clEnqueueReadBuffer(cq, cl_arr, CL_TRUE, 0, NUM_TOTAL_ELEMS * sizeof(*arr), arr, 0, NULL, NULL);
 	
 	for (i = 0; i < NUM_TOTAL_ELEMS; i++) {
-		printf("%d ", arr[i]);
+		printf("%d: %d\n", i, arr[i]);
 	}
 	
 	// Free everything
