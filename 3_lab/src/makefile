@@ -1,6 +1,6 @@
 
 CC      = gcc
-CFLAGS  = -std=c99 -Wall
+CFLAGS  = -std=c99 -Wall -g
 LIBS    = -lOpenCL -lrt
 SOURCES = cl_scan.c
 BIN_DIR = ../bin
@@ -13,6 +13,9 @@ run: compile
 
 clean:
 	rm -r $(BIN_DIR)
+
+debug: compile
+	gdb $(BIN_DIR)/$(BIN)
 
 $(BIN_DIR)/$(BIN) : $(BIN_DIR) $(SOURCES)
 	$(CC) $(CFLAGS) $(LIBS) -o $(BIN_DIR)/$(BIN) $(SOURCES)
