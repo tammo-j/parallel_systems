@@ -5,12 +5,14 @@
 
 #include <CL/opencl.h>
 
+#define CL_SCAN_KERNEL "./cl_scan_kernel.cl"
+
 #define NUM_ELEMS_PER_ITEM  15
 #define NUM_ITEMS_PER_GROUP 4
 #define NUM_GROUPS          5
 #define NUM_ELEMS_PER_GROUP NUM_ELEMS_PER_ITEM  * NUM_ITEMS_PER_GROUP
-#define NUM_ITEMS     NUM_ITEMS_PER_GROUP * NUM_GROUPS 
-#define NUM_ELEMS     NUM_ELEMS_PER_GROUP * NUM_GROUPS
+#define NUM_ITEMS           NUM_ITEMS_PER_GROUP * NUM_GROUPS 
+#define NUM_ELEMS           NUM_ELEMS_PER_GROUP * NUM_GROUPS
 
 void printBuildError(cl_program program, cl_device_id device)
 {
@@ -62,7 +64,7 @@ int main(int argc, char **argv)
 	assert(cq != NULL);
 	
 	// Get Kernel from File
-	FILE *kernel_file = fopen("./kernel.cl","r"); 
+	FILE *kernel_file = fopen(CL_SCAN_KERNEL, "r"); 
 	assert(kernel_file != NULL); 
 	fseek(kernel_file, 0L, SEEK_END); 
 	size_t kernel_size = ftell(kernel_file); 
