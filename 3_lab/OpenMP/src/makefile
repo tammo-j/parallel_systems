@@ -1,6 +1,6 @@
 
 CC      = gcc
-CFLAGS  = -Wall -g
+CFLAGS  = -std=c99 -Wall -g
 LIBS    = -lm
 OPTIONS = -fopenmp
 SOURCES = mp_scan.c
