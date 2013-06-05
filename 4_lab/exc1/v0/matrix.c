@@ -146,6 +146,7 @@ void store_matrix(matrix_t *m, char *path)
 	close(d);
 }
 
+/*
 matrix_t *multiply_matrix(matrix_t *a, matrix_t *b)
 {
 	if (a->columns != b->rows) {
@@ -174,3 +175,5 @@ void __multiply_matrix(matrix_t *c, matrix_t *a, matrix_t *b)
 		}
 	}
 }
+*/
+

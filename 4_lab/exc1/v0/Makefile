@@ -1,7 +1,8 @@
-PROGS = generate_random_matrix multiply_matrix show_matrix compare_matrix
-CFLAGS += -Wall
+PROGS = generate_random_matrix multiply_matrix show_matrix compare_matrix benchmark
+CFLAGS += -Wall -std=c99
+LDLIBS += -lm
 
-EXTRASRC = matrix.c
+EXTRASRC = stopwatch.c matrix.c matrix_v0.c
 EXTRADEP = matrix.h Makefile
 
 .PHONY: all
