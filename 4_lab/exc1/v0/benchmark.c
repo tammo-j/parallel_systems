@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
 		int matrix_work = m * n * k;
 		long long repeat = ceil( (double) min_work_G / (double) matrix_work );
 		
-		printf("%d/%d: Multiplying %dx%d and %dx%d matrices %d times ...\n", i+1, dims_len, m, n, n, k, repeat);
+		printf("%d/%d: Multiplying %dx%d and %dx%d matrices %lld times ...\n", i+1, dims_len, m, n, n, k, repeat);
 		
 		stopwatch_reset();
 		
