@@ -11,10 +11,12 @@ all: $(PROGS)
 
 .PHONY: clean
 clean:
-	rm -f $(OUT_DIR)/$(PROGS)
+	rm -rf $(OUT_DIR)[0123456789]
 
 # Slightly modified defaults from GNU make 3.81
 LINK.c = $(CC) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(TARGET_ARCH)
-$(PROGS): % : %.c $(EXTRASRC) $(EXTRADEP)
+$(PROGS): % : %.c $(EXTRASRC) $(EXTRADEP) $(OUT_DIR)
 	$(LINK.c) $< $(EXTRASRC) $(LOADLIBES) $(LDLIBS) -o $(OUT_DIR)/$@
 
+$(OUT_DIR):
+	mkdir $(OUT_DIR)

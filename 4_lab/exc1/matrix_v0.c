@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+
 #include "stopwatch.h"
 
 matrix_t *multiply_matrix(matrix_t *a, matrix_t *b)
