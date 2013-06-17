@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <float.h>
 #include <math.h>
 
 #include "matrix.h"
@@ -13,6 +14,7 @@
 #define ARG_DIMS 3
 
 #define MAX(A,B) ((A)>(B)?(A):(B))
+#define MIN(A,B) ((A)<(B)?(A):(B))
 
 typedef struct {
 	int m, n, k;
@@ -93,6 +95,8 @@ int main(int argc, char **argv) {
 		int m = dims[i].m;
 		int n = dims[i].n;
 		int k = dims[i].k;
+		
+		double time_min = DBL_MAX;
 	
 		int matrix_work = m * n * k;
 		long long repeat = ceil( (double) min_work_G / (double) matrix_work );
@@ -109,19 +113,22 @@ int main(int argc, char **argv) {
 			matrix_t *C = multiply_matrix(A, B);
 			
 			//error |= !verify_matrix(A, B, C);
+			
+			time_min = MIN(time_min, stopwatch_lap());
 
 			free_matrix(A);
 			free_matrix(B);
 			free_matrix(C);
 		}
 		
-		double time = stopwatch_get();
+		double total_time = stopwatch_get();
 		
-		double wps = repeat*matrix_work / time / 1e6;
+		double wps = repeat*matrix_work / total_time / 1e6;
+		double wps_max = matrix_work / time_min / 1e6;
 		
 		if (error)
 			printf("\terror found!\n");
-		printf("\t%.2f seconds needed. WPS = %.1f\n", time, wps);
+		printf("\t%.2f seconds needed (minimum %3e). average WpS = %.1f, maximum WpS = %.1f\n", total_time, time_min, wps, wps_max);
 	}
 	
 	return EXIT_SUCCESS;

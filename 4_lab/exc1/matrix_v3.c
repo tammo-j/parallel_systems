@@ -27,19 +27,20 @@ void __multiply_matrix(matrix_t * restrict c, matrix_t * restrict a, matrix_t * 
 	int i,j,k;
 	memset(c->data, 0, c->rows * c->columns * sizeof(double));
 
-	for (i = 0; i < a->rows; i++) {
-		for (j = 0; j < b->columns; j++) {
-			for (k = 0; k < a->columns - 5; k += 6) {
-				c->data[i * b->columns + j] +=
-					a->data[i * a->columns + k+0] * b->data[(k+0) * b->columns + j] +
-					a->data[i * a->columns + k+1] * b->data[(k+1) * b->columns + j] +
-					a->data[i * a->columns + k+2] * b->data[(k+2) * b->columns + j] +
-					a->data[i * a->columns + k+3] * b->data[(k+3) * b->columns + j] +
-					a->data[i * a->columns + k+4] * b->data[(k+4) * b->columns + j] +
-					a->data[i * a->columns + k+5] * b->data[(k+5) * b->columns + j];
+	for (i = 0; i < a->rows; ++i) {
+		for (k = 0; k < a->columns; ++k) {
+			for (j = 0; j < b->columns - 5; j += 6) {
+				double a_ik = a->data[i * a->columns + k];
+				
+				c->data[i * b->columns + (j+0)] += a_ik * b->data[k * b->columns + (j+0)];
+				c->data[i * b->columns + (j+1)] += a_ik * b->data[k * b->columns + (j+1)];
+				c->data[i * b->columns + (j+2)] += a_ik * b->data[k * b->columns + (j+2)];
+				c->data[i * b->columns + (j+3)] += a_ik * b->data[k * b->columns + (j+3)];
+				c->data[i * b->columns + (j+4)] += a_ik * b->data[k * b->columns + (j+4)];
+				c->data[i * b->columns + (j+5)] += a_ik * b->data[k * b->columns + (j+5)];
 			}
 			
-			for (; k < a->columns; ++k)
+			for ( ; j < a->columns; ++j)
 				c->data[i * b->columns + j] += a->data[i * a->columns + k] * b->data[k * b->columns + j];
 		}
 	}

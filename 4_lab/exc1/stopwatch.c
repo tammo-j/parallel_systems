@@ -1,22 +1,27 @@
 #include "stopwatch.h"
 
-#include <time.h>
+#include <omp.h>
 
-static clock_t g_total_time, g_start_time;
+static double g_total_time, g_start_time, g_lap_time;
 
 void stopwatch_reset() {
-	g_total_time = 0;
+	g_total_time = 0.;
 }
 
 void stopwatch_start() {
-	g_start_time = clock();
+	g_start_time = omp_get_wtime();
 }
 
 void stopwatch_stop() {
-	g_total_time += clock() - g_start_time;
+	g_lap_time = omp_get_wtime() - g_start_time;
+	g_total_time += g_lap_time;
 }
 
 double stopwatch_get() {
-	return (double) g_total_time / CLOCKS_PER_SEC;
+	return g_total_time;
+}
+
+double stopwatch_lap() {
+	return g_lap_time;
 }
 

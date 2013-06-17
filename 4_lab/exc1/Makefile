@@ -1,6 +1,6 @@
 PROGS = generate_random_matrix multiply_matrix show_matrix compare_matrix benchmark
 CFLAGS += -Wall -std=c99 -O3
-LDLIBS += -lm
+LDLIBS += -lm -fopenmp
 OUT_DIR = ./v$(VER)
 
 EXTRASRC = stopwatch.c matrix.c matrix_v$(VER).c
