@@ -25,12 +25,12 @@ matrix_t *multiply_matrix(matrix_t *a, matrix_t *b)
 
 void __multiply_matrix(matrix_t * restrict c, matrix_t * restrict a, matrix_t * restrict b)
 {
-	int i,j,k;
 	memset(c->data, 0, c->rows * c->columns * sizeof(double));
 	
 	#pragma omp parallel for
-	for (i = 0; i < a->rows; ++i) {
-		for (k = 0; k < a->columns; ++k) {
+	for (int i = 0; i < a->rows; ++i) {
+		for (int k = 0; k < a->columns; ++k) {
+			int j;
 			for (j = 0; j < b->columns - 5; j += 6) {
 				double a_ik = a->data[i * a->columns + k];
 				

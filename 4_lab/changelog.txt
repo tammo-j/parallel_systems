@@ -1,0 +1,59 @@
+
+VER 0:
+- Unveränderte Version
+- Keine Compileroptimierung
+- 67.7 14.3
+
+VER 1: basiert auf VER 0
+- Compileroptimierung -O3
+- 581.5	  56.5
+Der Performancesprung ist für beide Matrixgrößen groß. Dennoch übertrifft die Performance für kleine Matrizen bei weiten die der großen. Grund dafür sind Cache Misses.
+
+Basierend auf Version 1 haben wir drei verschiedene Verbesserungen ausprobiert, welche auf eine erhöhte Parallelität auf Instruktionsebene abzielen.
+
+In Version 2 wurde die innere k-Schleife abgerollt.
+
+VER 2: basiert auf VER 1
+- k-Schleife abgerollt
+- 881.2	  41.7
+Es gibt einen leichten Anstieg für kleine Matrizen. Den Performanceverlust für große Matrizen können wir uns allerdings nicht ganz erklären. Das Problem der Cache Misses bleibt bei dieser Version bestehen.
+
+In Version 3 wird das Problem der Cache Misses angegangen, indem statt der k- die j-Schleife abgerollt wird.
+
+VER 3: basiert auf VER 1
+- j-Schleife abgerollt
+- 1001.8	 558.6
+Dies hat einen großen Performancegewinn für große Matrizen zur Folge. Selbst kleine Matrizen scheinen davon zu profitieren.
+
+Eine andere Variante zur Bewältigung der Cache Misses ist Matrix B zu transponieren und die k-Schleife abzurollen.
+
+VER 6: basiert auf VER 1
+- Matrix B transponiert
+- 919.2	 579.8
+Die Ergebnisse sind vergleichbar mit Version 3. Der Overhead der Transponierung sorgt jedoch etwas schlechtere Werte.
+
+Die folgendenen Versionen basieren jeweils auf die drei vorherigen, die nun parallelisiert wurden. Dabei wurde stets die äußerste Schleife (i) parallelisiert.
+
+VER 5: basiert auf VER 2
+- i-Schleife parallelisiert
+- 2137.5	 249.0
+
+VER 4: basiert auf VER 3
+- i-Schleife parallelisiert
+- 2208.6	1315.2
+
+VER 7: basiert auf VER 6
+- i-Schleife parallelisiert
+- 1826.6	1031.2
+
+Die Parallelisierung führt in Anbetracht einer theoretisch möglichen Verbesserung um den Faktor 24 nur zu einer geringen Leistungssteigerung. Möglicherweise existiert hier eine Art Flaschenhals.
+
+VER	96x96	1024x1024
+0	  67.7	  
+1	 581.5	  56.5
+2	 881.2	  41.7
+3	1001.8	 558.6
+4	2208.6	1315.2
+5	2137.5	 249.0
+6	 919.2	 579.8
+7	1826.6	1031.2

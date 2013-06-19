@@ -112,7 +112,8 @@ int main(int argc, char **argv) {
 			matrix_t *B = generate_random_matrix(n, k);
 			matrix_t *C = multiply_matrix(A, B);
 			
-			//error |= !verify_matrix(A, B, C);
+			if (min_work_G == 0)
+				error |= !verify_matrix(A, B, C);
 			
 			time_min = MIN(time_min, stopwatch_lap());
 

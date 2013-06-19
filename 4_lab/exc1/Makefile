@@ -1,5 +1,5 @@
 PROGS = generate_random_matrix multiply_matrix show_matrix compare_matrix benchmark
-CFLAGS += -Wall -std=c99 -O3
+CFLAGS += -Wall -std=c99 -O3 -funroll-loops -march=native
 LDLIBS += -lm -fopenmp
 OUT_DIR = ./v$(VER)
 
